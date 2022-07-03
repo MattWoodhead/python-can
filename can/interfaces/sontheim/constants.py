@@ -118,7 +118,7 @@ _DLL_FUNCTIONS = [
     ("canRead", c_long, (HANDLE, pointer, c_long)),
     ("canReadNoWait", c_long, (HANDLE, pointer, c_long)),
     ("canConfirmedTransmit", c_long, (HANDLE, pointer, c_long)),
-    ("canSend", c_long, (HANDLE, pointer, pointer(c_long))),
+    ("canSend", c_long, (HANDLE, pointer, pointer)),
     ("canWrite", c_long, (HANDLE, pointer, c_long)),
     ("canFlush", c_long, (HANDLE, c_long)),
     ("canStatus", c_long, (HANDLE, pointer)),

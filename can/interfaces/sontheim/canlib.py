@@ -277,8 +277,8 @@ class SontheimBus(BusABC):
 
         print(struct.read_struct_as_dict(msg_struct))
 
-        error_code = _canlib.canConfirmedTransmit(self._Handle, byref(msg_struct), byref(c_long(1)))
-        #error_code = _canlib.canSend(self._Handle, byref(msg_struct), byref(c_long(1)))
+        #error_code = _canlib.canConfirmedTransmit(self._Handle, byref(msg_struct), byref(c_long(1)))
+        error_code = _canlib.canSend(self._Handle, byref(msg_struct), byref(c_long(1)))
 
         if error_code == const.NTCAN_TX_TIMEOUT:
             raise CanTimeoutError("Timeout whilst attempting to send message")
@@ -355,3 +355,6 @@ class SontheimBus(BusABC):
         raise NotImplementedError(
             "fileno is not implemented in the Sontheim CAN bus interfaces"
         )
+
+    def __getattr__(self, item: str):
+        return self.bus.__getattribute__(item)
