@@ -57,7 +57,6 @@ if (sys.platform == "win32" or sys.platform == "cygwin"):
             _canlib.map_symbol(function, restype, argtypes)
     except Exception as e:
         log.warning("Cannot load SIE MT_API for Sontheim: %s", e)
-        print(e)
 
 else:
     # Will not work on other systems, but have it importable anyway for
@@ -275,8 +274,6 @@ class SontheimBus(BusABC):
         for i in range(msg.dlc):
             msg_struct.aby_data[i] = msg.data[i]
 
-        print(struct.read_struct_as_dict(msg_struct))
-
         #error_code = _canlib.canConfirmedTransmit(self._Handle, byref(msg_struct), byref(c_long(1)))
         error_code = _canlib.canSend(self._Handle, byref(msg_struct), byref(c_long(1)))
 
@@ -356,5 +353,5 @@ class SontheimBus(BusABC):
             "fileno is not implemented in the Sontheim CAN bus interfaces"
         )
 
-    def __getattr__(self, item: str):
-        return self.bus.__getattribute__(item)
+    # def __getattr__(self, item: str):
+    #     return self.bus.__getattribute__(item)

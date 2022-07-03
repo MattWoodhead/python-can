@@ -1,5 +1,5 @@
 """
-Test for PCAN Interface
+Test for Sontheim API Interface
 """
 
 import ctypes
@@ -12,9 +12,9 @@ from parameterized import parameterized
 
 import can
 from can.bus import BusState
-from can.exceptions import CanInitializationError
+from can.exceptions import CanOperationError, CanInitializationError, CanTimeoutError
 import can.interfaces.sontheim.constants as const
-from can.interfaces.sontheim import PcanBus, PcanError
+from can.interfaces.sontheim import SontheimBus
 
 
 class TestPCANBus(unittest.TestCase):
@@ -36,38 +36,38 @@ class TestPCANBus(unittest.TestCase):
             self.bus.shutdown()
             self.bus = None
 
-    def _mockGetValue(self, channel, parameter):
-        """
-        This method is used as mock for GetValue method of PCANBasic object.
-        Only a subset of parameters are supported.
-        """
-        if parameter == PCAN_API_VERSION:
-            return const.NTCAN_SUCCESS, self.PCAN_API_VERSION_SIM.encode("ascii")
-        raise NotImplementedError(
-            f"No mock return value specified for parameter {parameter}"
-        )
+    # def _mockGetValue(self, channel, parameter):
+    #     """
+    #     This method is used as mock for GetValue method of PCANBasic object.
+    #     Only a subset of parameters are supported.
+    #     """
+    #     if parameter == PCAN_API_VERSION:
+    #         return const.NTCAN_SUCCESS, self.PCAN_API_VERSION_SIM.encode("ascii")
+    #     raise NotImplementedError(
+    #         f"No mock return value specified for parameter {parameter}"
+    #     )
 
     def test_bus_creation(self) -> None:
-        self.bus = can.Bus(bustype="pcan")
-        self.assertIsInstance(self.bus, PcanBus)
+        self.bus = can.Bus(bustype="sontheim")
+        self.assertIsInstance(self.bus, SontheimBus)
         self.MockPCANBasic.assert_called_once()
         self.mock_pcan.Initialize.assert_called_once()
         self.mock_pcan.InitializeFD.assert_not_called()
 
     def test_bus_creation_state_error(self) -> None:
         with self.assertRaises(ValueError):
-            can.Bus(bustype="pcan", state=BusState.ERROR)
+            can.Bus(bustype="sontheim", state=BusState.ERROR)
 
     def test_bus_creation_fd(self) -> None:
-        self.bus = can.Bus(bustype="pcan", fd=True)
-        self.assertIsInstance(self.bus, PcanBus)
+        self.bus = can.Bus(bustype="sontheim", fd=True)  # Todo - check this raises an exception (FD is not available on sontheim interfaces)
+        self.assertIsInstance(self.bus, SontheimBus)
         self.MockPCANBasic.assert_called_once()
         self.mock_pcan.Initialize.assert_not_called()
         self.mock_pcan.InitializeFD.assert_called_once()
 
     def test_api_version_low(self) -> None:
         self.PCAN_API_VERSION_SIM = "1.0"
-        with self.assertLogs("can.pcan", level="WARNING") as cm:
+        with self.assertLogs("can.sontheim", level="WARNING") as cm:
             self.bus = can.Bus(bustype="pcan")
             found_version_warning = False
             for i in cm.output:
@@ -78,68 +78,22 @@ class TestPCANBus(unittest.TestCase):
                 f"No warning was logged for incompatible api version {cm.output}",
             )
 
-    def test_api_version_read_fail(self) -> None:
-        self.mock_pcan.GetValue = Mock(return_value=(PCAN_ERROR_ILLOPERATION, None))
-        with self.assertRaises(CanInitializationError):
-            self.bus = can.Bus(bustype="pcan")
-
-    @parameterized.expand(
-        [
-            ("no_error", PCAN_ERROR_OK, PCAN_ERROR_OK, "some ok text 1"),
-            ("one_error", PCAN_ERROR_UNKNOWN, PCAN_ERROR_OK, "some ok text 2"),
-            (
-                "both_errors",
-                PCAN_ERROR_UNKNOWN,
-                PCAN_ERROR_UNKNOWN,
-                "An error occurred. Error-code's text (8h) couldn't be retrieved",
-            ),
-        ]
-    )
-    def test_get_formatted_error(self, name, status1, status2, expected_result: str):
-        with self.subTest(name):
-            self.bus = can.Bus(bustype="pcan")
-            self.mock_pcan.GetErrorText = Mock(
-                side_effect=[
-                    (status1, expected_result.encode("utf-8", errors="replace")),
-                    (status2, expected_result.encode("utf-8", errors="replace")),
-                ]
-            )
-
-            complete_text = self.bus._get_formatted_error(PCAN_ERROR_BUSHEAVY)
-
-            self.assertEqual(complete_text, expected_result)
+    # def test_api_version_read_fail(self) -> None:
+    #     self.mock_pcan.GetValue = Mock(return_value=(PCAN_ERROR_ILLOPERATION, None))
+    #     with self.assertRaises(CanInitializationError):
+    #         self.bus = can.Bus(bustype="pcan")
 
     def test_status(self) -> None:
-        self.bus = can.Bus(bustype="pcan")
+        self.bus = can.Bus(bustype="sontheim")
         self.bus.status()
-        self.mock_pcan.GetStatus.assert_called_once_with(PCAN_USBBUS1)
-
-    @parameterized.expand(
-        [("no_error", PCAN_ERROR_OK, True), ("error", PCAN_ERROR_UNKNOWN, False)]
-    )
-    def test_status_is_ok(self, name, status, expected_result) -> None:
-        with self.subTest(name):
-            self.mock_pcan.GetStatus = Mock(return_value=status)
-            self.bus = can.Bus(bustype="pcan")
-            self.assertEqual(self.bus.status_is_ok(), expected_result)
-            self.mock_pcan.GetStatus.assert_called_once_with(PCAN_USBBUS1)
-
-    @parameterized.expand(
-        [("no_error", PCAN_ERROR_OK, True), ("error", PCAN_ERROR_UNKNOWN, False)]
-    )
-    def test_reset(self, name, status, expected_result) -> None:
-        with self.subTest(name):
-            self.mock_pcan.Reset = Mock(return_value=status)
-            self.bus = can.Bus(bustype="pcan", fd=True)
-            self.assertEqual(self.bus.reset(), expected_result)
-            self.mock_pcan.Reset.assert_called_once_with(PCAN_USBBUS1)
+        # self.mock_pcan.GetStatus.assert_called_once_with(PCAN_USBBUS1)
 
     @parameterized.expand(
         [("no_error", PCAN_ERROR_OK, 1), ("error", PCAN_ERROR_UNKNOWN, None)]
     )
     def test_get_device_number(self, name, status, expected_result) -> None:
         with self.subTest(name):
-            self.bus = can.Bus(bustype="pcan", fd=True)
+            self.bus = can.Bus(bustype="sontheim")
             # Mock GetValue after creation of bus to use first mock of
             # GetValue in constructor
             self.mock_pcan.GetValue = Mock(return_value=(status, 1))
@@ -147,20 +101,6 @@ class TestPCANBus(unittest.TestCase):
             self.assertEqual(self.bus.get_device_number(), expected_result)
             self.mock_pcan.GetValue.assert_called_once_with(
                 PCAN_USBBUS1, PCAN_DEVICE_NUMBER
-            )
-
-    @parameterized.expand(
-        [("no_error", PCAN_ERROR_OK, True), ("error", PCAN_ERROR_UNKNOWN, False)]
-    )
-    def test_set_device_number(self, name, status, expected_result) -> None:
-        with self.subTest(name):
-            self.bus = can.Bus(bustype="pcan")
-            self.mock_pcan.SetValue = Mock(return_value=status)
-            self.assertEqual(self.bus.set_device_number(3), expected_result)
-            # check last SetValue call
-            self.assertEqual(
-                self.mock_pcan.SetValue.call_args_list[-1][0],
-                (PCAN_USBBUS1, PCAN_DEVICE_NUMBER, 3),
             )
 
     def test_recv(self):
@@ -179,29 +119,6 @@ class TestPCANBus(unittest.TestCase):
         self.assertSequenceEqual(recv_msg.data, msg.DATA)
         self.assertEqual(recv_msg.timestamp, 0)
 
-    def test_recv_fd(self):
-        data = (ctypes.c_ubyte * 64)(*[x for x in range(64)])
-        msg = TPCANMsgFD(
-            ID=0xC0FFEF,
-            DLC=64,
-            MSGTYPE=(PCAN_MESSAGE_EXTENDED.value | PCAN_MESSAGE_FD.value),
-            DATA=data,
-        )
-
-        timestamp = TPCANTimestampFD()
-
-        self.mock_pcan.ReadFD = Mock(return_value=(PCAN_ERROR_OK, msg, timestamp))
-
-        self.bus = can.Bus(bustype="pcan", fd=True)
-
-        recv_msg = self.bus.recv()
-        self.assertEqual(recv_msg.arbitration_id, msg.ID)
-        self.assertEqual(recv_msg.dlc, msg.DLC)
-        self.assertEqual(recv_msg.is_extended_id, True)
-        self.assertEqual(recv_msg.is_fd, True)
-        self.assertSequenceEqual(recv_msg.data, msg.DATA)
-        self.assertEqual(recv_msg.timestamp, 0)
-
     @pytest.mark.timeout(3.0)
     def test_recv_no_message(self):
         self.mock_pcan.Read = Mock(return_value=(PCAN_ERROR_QRCVEMPTY, None, None))
@@ -217,16 +134,6 @@ class TestPCANBus(unittest.TestCase):
         self.bus.send(msg)
         self.mock_pcan.Write.assert_called_once()
         self.mock_pcan.WriteFD.assert_not_called()
-
-    def test_send_fd(self) -> None:
-        self.mock_pcan.WriteFD = Mock(return_value=PCAN_ERROR_OK)
-        self.bus = can.Bus(bustype="pcan", fd=True)
-        msg = can.Message(
-            arbitration_id=0xC0FFEF, data=[1, 2, 3, 4, 5, 6, 7, 8], is_extended_id=True
-        )
-        self.bus.send(msg)
-        self.mock_pcan.Write.assert_not_called()
-        self.mock_pcan.WriteFD.assert_called_once()
 
     @parameterized.expand(
         [
@@ -332,16 +239,8 @@ class TestPCANBus(unittest.TestCase):
         self.mock_pcan.GetValue = Mock(
             return_value=(PCAN_ERROR_OK, PCAN_CHANNEL_AVAILABLE)
         )
-        configs = PcanBus._detect_available_configs()
+        configs = SontheimBus._detect_available_configs()
         self.assertEqual(len(configs), 50)
-
-    @parameterized.expand([("valid", PCAN_ERROR_OK, "OK"), ("invalid", 0x00005, None)])
-    def test_status_string(self, name, status, expected_result) -> None:
-        with self.subTest(name):
-            self.bus = can.Bus(bustype="pcan")
-            self.mock_pcan.GetStatus = Mock(return_value=status)
-            self.assertEqual(self.bus.status_string(), expected_result)
-            self.mock_pcan.GetStatus.assert_called()
 
 
 if __name__ == "__main__":

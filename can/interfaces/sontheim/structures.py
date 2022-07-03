@@ -23,7 +23,8 @@ from ctypes import (
 )
 from ctypes import Structure
 
-from .constants import MAX_NUM_APIHANDLE
+
+MAX_NUM_APIHANDLE = 4
 
 
 def read_struct_as_dict(struct):
