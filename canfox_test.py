@@ -6,12 +6,16 @@ Created on Sat Jul  2 20:36:51 2022
 """
 
 import can
+from can import Message
 from can.interfaces.sontheim import devices
 
-with can.Bus(interface="sontheim", channel=devices.CanFox.CAN1, bitrate=250000) as bus:
+with can.Bus(interface="sontheim", channel=devices.CanFox.CAN1, bitrate=250000, echo=True) as bus:
 #with can.Bus(interface="serial", channel="com12", bitrate=250000) as bus:
 
     bus._detect_available_configs()
+
+    test_msg = Message(arbitration_id=0xC0FFEF, is_extended_id=True, data=[0xD, 0xE, 0xA, 0xD, 0xB, 0xE, 0xE, 0xF])
+    bus.send(test_msg)
 
     for msg in bus:
         print(msg.data)

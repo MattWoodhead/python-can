@@ -23,6 +23,3 @@ Virtual_Device_2 = dual_channel(30, 31)
 Virtual_Device_3 = dual_channel(33, 34)
 Virtual_Device_4 = dual_channel(36, 37)
 Virtual_Device_5 = dual_channel(39, 40)
-
-
-_net_number_lookup =

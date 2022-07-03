@@ -4,7 +4,17 @@ Ctypes constants module for the SIE / IFM CANfox interface
 Copyright (C) 2022 Matt Woodhead
 """
 
+from ctypes import (
+    c_long,
+    c_ulong,
+    c_ulonglong,
+    c_wchar_p,
+    c_bool,
+    pointer,
+)
 import sys
+
+from ...ctypesutil import HANDLE
 
 IS_PYTHON_64BIT = sys.maxsize > 2 ** 32
 
@@ -68,3 +78,74 @@ CANFOX_BITRATES = {
     50000: 6,
     25000: 7,
 }
+
+
+# The functions defined in SIECA132.pdf
+# Function name, response type, arguments tuple, error function (Optional)
+_DLL_FUNCTIONS = [
+    (
+        "canOpen",
+        c_long,
+        (c_long, c_long, c_long, c_long, c_long, c_wchar_p, c_wchar_p, c_wchar_p, HANDLE),
+    ),
+    (
+        "canOpenSH",
+        c_long,
+        (c_long, c_long, c_long, c_long, c_long, c_wchar_p, c_wchar_p, c_wchar_p, HANDLE),
+    ),
+    ("canClose", c_long, (HANDLE, )),
+    ("canSetBaudrate", c_long, (HANDLE, c_long)),
+    ("canSetBaudrateForce", c_long, (HANDLE, c_long)),
+    ("canIsNetOwner", c_long, (HANDLE, )),
+    ("canSetOwner", c_long, (c_long, HANDLE)),
+    ("canGetOwner", c_long, (c_long, HANDLE)),
+    ("canIdAdd", c_long, (HANDLE, c_long)),
+    ("canIdAddArray", c_long, (HANDLE, pointer)),
+    ("canIdDelete", c_long, (HANDLE, c_long)),
+    ("canIdDeleteArray", c_long, (HANDLE, )),
+    ("canIDStatus", c_long, (HANDLE, pointer)),
+    ("canEnableAllIds", c_long, (HANDLE, c_bool)),
+    ("canAreAllIdsEnabled", c_long, (HANDLE, pointer)),
+    # "canSetFilterMode",
+    ("canGetFilterMode", c_long, (HANDLE, pointer)),
+    # "canSetFilterJ2534",
+    ("canDeleteFilterJ2534", c_long, (HANDLE, )),
+    # "canSetFilterJ2534_2",
+    ("canDeleteFilterJ2534_2", c_long, (HANDLE, )),
+    ("canSetBridgeFilter", c_long, (HANDLE, HANDLE, c_ulong, c_ulong, c_ulong)),
+    # "canGetBridgeFilter",
+    ("canClearBridgeFilter", c_long, (HANDLE, c_ulong, c_ulong, c_ulong, c_ulong)),
+    ("canRead", c_long, (HANDLE, pointer, c_long)),
+    ("canReadNoWait", c_long, (HANDLE, pointer, c_long)),
+    ("canConfirmedTransmit", c_long, (HANDLE, pointer, c_long)),
+    ("canSend", c_long, (HANDLE, pointer, pointer(c_long))),
+    ("canWrite", c_long, (HANDLE, pointer, c_long)),
+    ("canFlush", c_long, (HANDLE, c_long)),
+    ("canStatus", c_long, (HANDLE, pointer)),
+    ("canGetDllInfo", c_long, (pointer, pointer)),
+    ("canGetCounter", c_long, (pointer, )),
+    ("canGetCounterExtended", c_long, (HANDLE, pointer)),
+    ("canResetCounter", c_long, (HANDLE)),
+    ("canGetBusloadExtended", c_long, (HANDLE, pointer)),
+    # "canGetTimeout",
+    # "canSetTimeout",
+    ("canBreakCanRead", c_long, (HANDLE, )),
+    ("canClearBuffer", c_long, (HANDLE, )),
+    ("canGetNumberOfConnectedDevices", c_long, (HANDLE, )),
+    ("canGetDeviceList", c_long, (pointer, )),
+    # "canGetSyncTimer",
+    ("canGetDeviceTimestampBase", c_long, (c_long, c_ulong)),
+    ("canEnableHWExtendedId", c_long, (HANDLE, c_bool)),
+    # "canGetCanLevel",
+    ("canGetCanLevelHist", c_long, (HANDLE, c_bool, pointer)),
+    ("canGetDiffTimeLastFrame", c_long, (HANDLE, pointer)),
+    ("canGetHWSerialNumber", c_long, (HANDLE, pointer, pointer)),
+    ("canGetSystemTime", c_long, (c_ulonglong, c_ulonglong)),
+    ("queryRunningVersion", c_long, (pointer, )),
+    ("setApplicationFlags", c_long, (c_ulong, )),
+    ("getApplicationFlags", c_long, (pointer, )),
+    ("canBlinkLED", c_long, (HANDLE, c_ulong, c_ulong, c_ulong)),
+    ("canGetEepromAccess", c_long, (HANDLE, c_ulong, pointer)),
+    ("canReadEeprom", c_long, (HANDLE, c_long, c_long, pointer)),
+    ("canWriteEeprom", c_long, (HANDLE, c_long, c_long, pointer)),
+]
