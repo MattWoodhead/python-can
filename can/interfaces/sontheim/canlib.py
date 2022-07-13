@@ -53,7 +53,6 @@ if (sys.platform == "win32" or sys.platform == "cygwin"):
             # TODO: develop a 64 bit wrapper for the 32 bit API similar to msl-loadlib.
         _canlib = CLibrary("C:\\Program Files (x86)\\Sontheim\\MT_Api\\SIECA132.dll")
         for function, restype, argtypes in const._DLL_FUNCTIONS:
-            print(function)
             _canlib.map_symbol(function, restype, argtypes)
     except Exception as e:
         log.warning("Cannot load SIE MT_API for Sontheim: %s", e)
@@ -206,7 +205,7 @@ class SontheimBus(BusABC):
         msg_struct = struct.CANMsgStruct()
         error_code = None
         while error_code is None:
-            error_code = _canlib.canReadNoWait(self._Handle, byref(msg_struct), byref(c_int(1)))
+            error_code = _canlib.canReadNoWait(self._Handle, byref(msg_struct), byref(c_long(1)))
             if error_code == const.NTCAN_RX_TIMEOUT:
                 if HAS_EVENTS:
                     error_code = None
@@ -239,7 +238,7 @@ class SontheimBus(BusABC):
 
         rx_msg = Message(
             timestamp=timestamp,
-            arbitration_id=hex(msg_struct.l_id),
+            arbitration_id=msg_struct.l_id,
             is_extended_id=frame_info & 2,
             is_remote_frame=msg_struct.by_remote & 1,
             is_error_frame=frame_info & 64,
