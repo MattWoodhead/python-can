@@ -19,6 +19,12 @@ from .generic import FileIOMessageWriter, MessageReader
 logger = logging.getLogger("can.io.mf4")
 
 try:
+    # set the log level of canmatrix module to ERROR to prevent
+    # stdout prints on optional dependency import warnings
+    canmatrix_logger = logging.getLogger("canmatrix")
+    canmatrix_logger_original_level = canmatrix_logger.level
+    canmatrix_logger.setLevel(logging.CRITICAL)
+    canmatrix_logger.handlers = [logging.NullHandler()]
     import asammdf
     import numpy as np
     from asammdf import Signal
@@ -26,6 +32,8 @@ try:
     from asammdf.blocks.v4_blocks import SourceInformation
     from asammdf.blocks.v4_constants import BUS_TYPE_CAN, SOURCE_BUS
     from asammdf.mdf import MDF
+    # return the log level of canmatrix module to its original value
+    canmatrix_logger.setLevel(canmatrix_logger_original_level)
 
     STD_DTYPE = np.dtype(
         [
