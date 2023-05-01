@@ -32,6 +32,7 @@ try:
     from asammdf.blocks.v4_blocks import SourceInformation
     from asammdf.blocks.v4_constants import BUS_TYPE_CAN, SOURCE_BUS
     from asammdf.mdf import MDF
+
     # return the log level of canmatrix module to its original value
     canmatrix_logger.setLevel(canmatrix_logger_original_level)
 
