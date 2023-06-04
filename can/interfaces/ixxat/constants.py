@@ -1,10 +1,9 @@
 """
-Ctypes wrapper module for IXXAT Virtual CAN Interface V4 on win32 systems
+Ctypes wrapper module for IXXAT Virtual CAN Interface V3 on win32 systems
 
 Copyright (C) 2016 Giuseppe Corbelli <giuseppe.corbelli@weightpack.com>
 """
-
-from . import structures
+from .structures import CANBTP
 
 FALSE = 0
 TRUE = 1
@@ -34,6 +33,37 @@ CAN_BT0_800KB = 0x00
 CAN_BT1_800KB = 0x16
 CAN_BT0_1000KB = 0x00
 CAN_BT1_1000KB = 0x14
+
+CAN_BT01_5KB = (0x3F, 0x7F)
+CAN_BT01_10KB = (0x31, 0x1C)
+CAN_BT01_20KB = (0x18, 0x1C)
+CAN_BT01_50KB = (0x09, 0x1C)
+CAN_BT01_100KB = (0x04, 0x1C)
+CAN_BT01_125KB = (0x03, 0x1C)
+CAN_BT01_250KB = (0x01, 0x1C)
+CAN_BT01_500KB = (0x00, 0x1C)
+CAN_BT01_800KB = (0x00, 0x16)
+CAN_BT01_1000KB = (0x00, 0x14)
+
+CAN_BTP_EMPTY = CANBTP(0, 0, 0, 0, 0, 0)
+CAN_BTP_5KB = CANBTP(0, 5000, 17, 8, 1, 0)
+CAN_BTP_10KB = CANBTP(0, 10000, 14, 2, 1, 0)
+CAN_BTP_20KB = CANBTP(0, 20000, 14, 2, 1, 0)
+CAN_BTP_50KB = CANBTP(0, 50000, 14, 2, 1, 0)
+CAN_BTP_100KB = CANBTP(0, 100000, 14, 2, 1, 0)
+CAN_BTP_125KB = CANBTP(0, 125000, 14, 2, 1, 0)
+CAN_BTP_250KB = CANBTP(0, 250000, 14, 2, 1, 0)
+CAN_BTP_500KB = CANBTP(0, 500000, 14, 2, 1, 0)
+CAN_BTP_800KB = CANBTP(0, 800000, 8, 2, 1, 0)
+CAN_BTP_1000KB = CANBTP(0, 1000000, 6, 2, 1, 0)
+
+CAN_BTP_DBR_SL_1000KB = CANBTP(0, 1000000, 1600, 400, 400, 1600)
+CAN_BTP_DBR_SL_2000KB = CANBTP(0, 2000000, 1600, 400, 400, 1600)
+CAN_BTP_DBR_SL_4000KB = CANBTP(0, 4000000, 800, 200, 200, 800)
+CAN_BTP_DBR_SL_5000KB = CANBTP(0, 5000000, 600, 200, 200, 600)
+CAN_BTP_DBR_SL_6667KB = CANBTP(0, 6666666, 400, 200, 200, 402)
+CAN_BTP_DBR_SL_8000KB = CANBTP(0, 8000000, 400, 100, 100, 250)
+CAN_BTP_DBR_SL_10000KB = CANBTP(0, 10000000, 300, 100, 100, 200)
 
 # Facilities/severities
 SEV_INFO = 0x40000000
@@ -106,27 +136,26 @@ VCI_E_DISCONNECTED = SEV_VCI_ERROR | 0x0019
 VCI_E_WRONG_FLASHFWVERSION = SEV_VCI_ERROR | 0x001A
 
 # Controller status
-CAN_STATUS_TXPEND = 0x01  # transmission pending
-CAN_STATUS_OVRRUN = 0x02  # data overrun occurred
-CAN_STATUS_ERRLIM = 0x04  # error warning limit exceeded
-CAN_STATUS_BUSOFF = 0x08  # bus off status
-CAN_STATUS_ININIT = 0x10  # init mode active
-CAN_STATUS_BUSCERR = 0x20  # bus coupling error
+CAN_STATUS_TXPEND = 0x01
+CAN_STATUS_OVRRUN = 0x02
+CAN_STATUS_ERRLIM = 0x04
+CAN_STATUS_BUSOFF = 0x08
+CAN_STATUS_ININIT = 0x10
+CAN_STATUS_BUSCERR = 0x20
 
 # Controller operating modes
-CAN_OPMODE_UNDEFINED = 0x00  # undefined
-CAN_OPMODE_STANDARD = 0x01  # reception of 11-bit id messages
-CAN_OPMODE_EXTENDED = 0x02  # reception of 29-bit id messages
-CAN_OPMODE_ERRFRAME = 0x04  # reception of error frames
-CAN_OPMODE_LISTONLY = 0x08  # listen only mode (TX passive)
-CAN_OPMODE_LOWSPEED = 0x10  # use low speed bus interface
-CAN_OPMODE_AUTOBAUD = 0x20  # automatic bit rate detection
+CAN_OPMODE_UNDEFINED = 0x00
+CAN_OPMODE_STANDARD = 0x01
+CAN_OPMODE_EXTENDED = 0x02
+CAN_OPMODE_ERRFRAME = 0x04
+CAN_OPMODE_LISTONLY = 0x08
+CAN_OPMODE_LOWSPEED = 0x10
 
 # Extended operating modes
-CAN_EXMODE_DISABLED = 0x00
-CAN_EXMODE_EXTDATALEN = 0x01
-CAN_EXMODE_FASTDATA = 0x02
-CAN_EXMODE_NONISOCANFD = 0x04
+CAN_EXMODE_DISABLED = 0x00  # no extended operation
+CAN_EXMODE_EXTDATA = 0x01  # extended data length
+CAN_EXMODE_FASTDATA = 0x02  # fast data bit rate
+CAN_EXMODE_NONISO = 0x04  # non ISO conform frames
 
 # Message types
 CAN_MSGTYPE_DATA = 0
@@ -152,108 +181,88 @@ CAN_ERROR_BIT = 4  # bit error
 CAN_ERROR_CRC = 6  # CRC error
 CAN_ERROR_OTHER = 7  # other (unspecified) error
 
-# acceptance code and mask to reject all CAN IDs
-CAN_ACC_MASK_NONE = 0xFFFFFFFF
-CAN_ACC_CODE_NONE = 0x80000000
+# Filter selection
+CAN_FILTER_STD = 1  # select standard filter (11-bit)
+CAN_FILTER_EXT = 2  # select extended filter (29-bit)
 
-# BTMODEs
-CAN_BTMODE_RAW = 0x00000001  # raw mode
-CAN_BTMODE_TSM = 0x00000002  # triple sampling mode
-
-
+# Filter mode
 CAN_FILTER_VOID = 0x00  # invalid or unknown filter mode (do not use for initialization)
 CAN_FILTER_LOCK = 0x01  # lock filter (inhibit all IDs)
 CAN_FILTER_PASS = 0x02  # bypass filter (pass all IDs)
 CAN_FILTER_INCL = 0x03  # inclusive filtering (pass registered IDs)
 CAN_FILTER_EXCL = 0x04  # exclusive filtering (inhibit registered IDs)
 
+# additional filter mode flag for ICanChannel2 initialization
+CAN_FILTER_SRRA = 0x80  # pass self-rec messages from all channels
 
-# message information flags (used by <CANMSGINFO.Bytes.bFlags>)
-CAN_MSGFLAGS_DLC = 0x0F  # [bit 0] data length code
-CAN_MSGFLAGS_OVR = 0x10  # [bit 4] data overrun flag
-CAN_MSGFLAGS_SRR = 0x20  # [bit 5] self reception request
-CAN_MSGFLAGS_RTR = 0x40  # [bit 6] remote transmission request
-CAN_MSGFLAGS_EXT = 0x80  # [bit 7] frame format (0=11-bit, 1=29-bit)
+CAN_ACC_MASK_NONE = 0xFFFFFFFF
+CAN_ACC_CODE_NONE = 0x80000000
 
-# extended message information flags (used by <CANMSGINFO.Bytes.[bFlags2|bAddFlags]>)
-CAN_MSGFLAGS2_SSM = 0x01  # [bit 0] single shot mode
-CAN_MSGFLAGS2_HPM = 0x02  # [bit 1] high priority message
-CAN_MSGFLAGS2_EDL = 0x04  # [bit 2] extended data length
-CAN_MSGFLAGS2_FDR = 0x08  # [bit 3] fast data bit rate
-CAN_MSGFLAGS2_ESI = 0x10  # [bit 4] error state indicator
-CAN_MSGFLAGS2_RES = 0xE0  # [bit 5..7] reserved bits
-
-
-CAN_ACCEPT_REJECT = 0x00  # message not accepted
-CAN_ACCEPT_ALWAYS = 0xFF  # message always accepted
-CAN_ACCEPT_FILTER_1 = 0x01  # message accepted by filter 1
-CAN_ACCEPT_FILTER_2 = 0x02  # message accepted by filter 2
-CAN_ACCEPT_PASSEXCL = 0x03  # message passes exclusion filter
-
-
-CAN_FEATURE_STDOREXT = 0x00000001  # 11 OR 29 bit (exclusive)
-CAN_FEATURE_STDANDEXT = 0x00000002  # 11 AND 29 bit (simultaneous)
-CAN_FEATURE_RMTFRAME = 0x00000004  # reception of remote frames
-CAN_FEATURE_ERRFRAME = 0x00000008  # reception of error frames
-CAN_FEATURE_BUSLOAD = 0x00000010  # bus load measurement
-CAN_FEATURE_IDFILTER = 0x00000020  # exact message filter
-CAN_FEATURE_LISTONLY = 0x00000040  # listen only mode
-CAN_FEATURE_SCHEDULER = 0x00000080  # cyclic message scheduler
-CAN_FEATURE_GENERRFRM = 0x00000100  # error frame generation
-CAN_FEATURE_DELAYEDTX = 0x00000200  # delayed message transmitter
-CAN_FEATURE_SINGLESHOT = 0x00000400  # single shot mode
-CAN_FEATURE_HIGHPRIOR = 0x00000800  # high priority message
-CAN_FEATURE_AUTOBAUD = 0x00001000  # automatic bit rate detection
-CAN_FEATURE_EXTDATA = 0x00002000  # extended data length (CANFD)
-CAN_FEATURE_FASTDATA = 0x00004000  # fast data bit rate (CANFD)
-CAN_FEATURE_ISOFRAME = 0x00008000  # ISO conform frame (CANFD)
-CAN_FEATURE_NONISOFRM = (
-    0x00010000  # non ISO conform frame (CANFD) (different CRC computation)
-)
-CAN_FEATURE_64BITTSC = 0x00020000  # 64-bit time stamp counter
-
-
-CAN_BITRATE_PRESETS = {
-    250000: structures.CANBTP(
-        dwMode=0, dwBPS=250000, wTS1=6400, wTS2=1600, wSJW=1600, wTDO=0
-    ),  # SP = 80,0%
-    500000: structures.CANBTP(
-        dwMode=0, dwBPS=500000, wTS1=6400, wTS2=1600, wSJW=1600, wTDO=0
-    ),  # SP = 80,0%
-    1000000: structures.CANBTP(
-        dwMode=0, dwBPS=1000000, wTS1=6400, wTS2=1600, wSJW=1600, wTDO=0
-    ),  # SP = 80,0%
-}
-
-CAN_DATABITRATE_PRESETS = {
-    500000: structures.CANBTP(
-        dwMode=0, dwBPS=500000, wTS1=6400, wTS2=1600, wSJW=1600, wTDO=6400
-    ),  # SP = 80,0%
-    833333: structures.CANBTP(
-        dwMode=0, dwBPS=833333, wTS1=1600, wTS2=400, wSJW=400, wTDO=1620
-    ),  # SP = 80,0%
-    1000000: structures.CANBTP(
-        dwMode=0, dwBPS=1000000, wTS1=1600, wTS2=400, wSJW=400, wTDO=1600
-    ),  # SP = 80,0%
-    1538461: structures.CANBTP(
-        dwMode=0, dwBPS=1538461, wTS1=1000, wTS2=300, wSJW=300, wTDO=1040
-    ),  # SP = 76,9%
-    2000000: structures.CANBTP(
-        dwMode=0, dwBPS=2000000, wTS1=1600, wTS2=400, wSJW=400, wTDO=1600
-    ),  # SP = 80,0%
-    4000000: structures.CANBTP(
-        dwMode=0, dwBPS=4000000, wTS1=800, wTS2=200, wSJW=200, wTDO=800
-    ),  # SP = 80,0%
-    5000000: structures.CANBTP(
-        dwMode=0, dwBPS=5000000, wTS1=600, wTS2=200, wSJW=200, wTDO=600
-    ),  # SP = 75,0%
-    6666666: structures.CANBTP(
-        dwMode=0, dwBPS=6666666, wTS1=400, wTS2=200, wSJW=200, wTDO=402
-    ),  # SP = 66,7%
-    8000000: structures.CANBTP(
-        dwMode=0, dwBPS=8000000, wTS1=400, wTS2=100, wSJW=100, wTDO=250
-    ),  # SP = 80,0%
-    10000000: structures.CANBTP(
-        dwMode=0, dwBPS=10000000, wTS1=300, wTS2=100, wSJW=100, wTDO=200
-    ),  # SP = 75,0%
-}
+CAN_EDLC_XLT = [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64]
+CAN_ELEN_XLT = [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    9,
+    9,
+    9,
+    10,
+    10,
+    10,
+    10,
+    11,
+    11,
+    11,
+    11,
+    12,
+    12,
+    12,
+    12,
+    13,
+    13,
+    13,
+    13,
+    13,
+    13,
+    13,
+    13,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+]
