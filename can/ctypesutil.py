@@ -1,11 +1,10 @@
+# type: ignore
 """
 This module contains common `ctypes` utils.
 """
-
 import ctypes
 import logging
 import sys
-
 from typing import Any, Callable, Optional, Tuple, Union
 
 log = logging.getLogger("can.ctypesutil")
@@ -14,14 +13,14 @@ __all__ = ["CLibrary", "HANDLE", "PHANDLE", "HRESULT"]
 
 
 try:
-    _LibBase = ctypes.WinDLL  # type: ignore
-    _FUNCTION_TYPE = ctypes.WINFUNCTYPE  # type: ignore
+    _LibBase = ctypes.WinDLL
+    _FUNCTION_TYPE = ctypes.WINFUNCTYPE
 except AttributeError:
     _LibBase = ctypes.CDLL
     _FUNCTION_TYPE = ctypes.CFUNCTYPE
 
 
-class CLibrary(_LibBase):  # type: ignore
+class CLibrary(_LibBase):
     def __init__(self, library_or_path: Union[str, ctypes.CDLL]) -> None:
         self.func_name: Any
 

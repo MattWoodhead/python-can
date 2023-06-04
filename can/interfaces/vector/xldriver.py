@@ -1,23 +1,18 @@
+# type: ignore
 """
 Ctypes wrapper module for Vector CAN Interface on win32/win64 systems.
 
 Authors: Julien Grave <grave.jul@gmail.com>, Christian Sandberg
 """
 
-# Import Standard Python Modules
-# ==============================
 import ctypes
 import logging
 import platform
-from .exceptions import VectorOperationError, VectorInitializationError
 
-# Define Module Logger
-# ====================
-LOG = logging.getLogger(__name__)
-
-# Vector XL API Definitions
-# =========================
 from . import xlclass
+from .exceptions import VectorInitializationError, VectorOperationError
+
+LOG = logging.getLogger(__name__)
 
 # Load Windows DLL
 DLL_NAME = "vxlapi64" if platform.architecture()[0] == "64bit" else "vxlapi"
@@ -200,7 +195,17 @@ xlCanSetChannelParams.argtypes = [
     ctypes.POINTER(xlclass.XLchipParams),
 ]
 xlCanSetChannelParams.restype = xlclass.XLstatus
-xlCanSetChannelParams.errcheck = check_status_operation
+xlCanSetChannelParams.errcheck = check_status_initialization
+
+xlCanSetChannelParamsC200 = _xlapi_dll.xlCanSetChannelParamsC200
+xlCanSetChannelParamsC200.argtypes = [
+    xlclass.XLportHandle,
+    xlclass.XLaccess,
+    ctypes.c_ubyte,
+    ctypes.c_ubyte,
+]
+xlCanSetChannelParams.restype = xlclass.XLstatus
+xlCanSetChannelParams.errcheck = check_status_initialization
 
 xlCanTransmit = _xlapi_dll.xlCanTransmit
 xlCanTransmit.argtypes = [
@@ -271,3 +276,18 @@ xlGetEventString.restype = xlclass.XLstringType
 xlCanGetEventString = _xlapi_dll.xlCanGetEventString
 xlCanGetEventString.argtypes = [ctypes.POINTER(xlclass.XLcanRxEvent)]
 xlCanGetEventString.restype = xlclass.XLstringType
+
+xlGetReceiveQueueLevel = _xlapi_dll.xlGetReceiveQueueLevel
+xlGetReceiveQueueLevel.argtypes = [xlclass.XLportHandle, ctypes.POINTER(ctypes.c_int)]
+xlGetReceiveQueueLevel.restype = xlclass.XLstatus
+xlGetReceiveQueueLevel.errcheck = check_status_operation
+
+xlGenerateSyncPulse = _xlapi_dll.xlGenerateSyncPulse
+xlGenerateSyncPulse.argtypes = [xlclass.XLportHandle, xlclass.XLaccess]
+xlGenerateSyncPulse.restype = xlclass.XLstatus
+xlGenerateSyncPulse.errcheck = check_status_operation
+
+xlFlushReceiveQueue = _xlapi_dll.xlFlushReceiveQueue
+xlFlushReceiveQueue.argtypes = [xlclass.XLportHandle]
+xlFlushReceiveQueue.restype = xlclass.XLstatus
+xlFlushReceiveQueue.errcheck = check_status_operation

@@ -7,6 +7,15 @@ Here we document the odds and ends that are more helpful for creating your own i
 or listeners but generally shouldn't be required to interact with python-can.
 
 
+BusABC
+------
+
+The :class:`~can.BusABC` class, as the name suggests, provides an abstraction of a CAN bus.
+The bus provides a wrapper around a physical or virtual CAN Bus.
+
+An interface specific instance of the :class:`~can.BusABC` is created by the :class:`~can.Bus`
+class, see :ref:`bus` for the user facing API.
+
 .. _businternals:
 
 
@@ -48,7 +57,7 @@ They **might** implement the following:
     and thus might not provide message filtering:
 
 
-Concrete instances are usually created by :class:`can.Bus` which takes the users
+Concrete instances are usually created by :func:`can.Bus` which takes the users
 configuration into account.
 
 
@@ -57,20 +66,29 @@ Bus Internals
 
 Several methods are not documented in the main :class:`can.BusABC`
 as they are primarily useful for library developers as opposed to
-library users. This is the entire ABC bus class with all internal
-methods:
+library users.
 
-.. autoclass:: can.BusABC
-    :private-members:
-    :special-members:
-    :noindex:
+.. automethod:: can.BusABC.__init__
 
+.. automethod:: can.BusABC.__iter__
+
+.. automethod:: can.BusABC.__str__
+
+.. autoattribute:: can.BusABC.__weakref__
+
+.. automethod:: can.BusABC._recv_internal
+
+.. automethod:: can.BusABC._apply_filters
+
+.. automethod:: can.BusABC._send_periodic_internal
+
+.. automethod:: can.BusABC._detect_available_configs
 
 
 About the IO module
 -------------------
 
-Handling of the different file formats is implemented in :mod:`can.io`.
+Handling of the different file formats is implemented in ``can.io``.
 Each file/IO type is within a separate module and ideally implements both a *Reader* and a *Writer*.
 The reader usually extends :class:`can.io.generic.BaseIOHandler`, while
 the writer often additionally extends :class:`can.Listener`,

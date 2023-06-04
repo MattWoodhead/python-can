@@ -8,27 +8,24 @@
 #
 #  ------------------------------------------------------------------
 #  Author : Keneth Wagner
-#  Last change: 14.01.2021 Wagner
-#
-#  Language: Python 2.7, 3.7
+#  Last change: 2022-07-06
 #  ------------------------------------------------------------------
 #
-#  Copyright (C) 1999-2021  PEAK-System Technik GmbH, Darmstadt
+#  Copyright (C) 1999-2022  PEAK-System Technik GmbH, Darmstadt
 #  more Info at http://www.peak-system.com
-#
 
 # Module Imports
-#
+import logging
+import platform
 from ctypes import *
 from ctypes.util import find_library
-from string import *
-import platform
 
-import logging
+PLATFORM = platform.system()
+IS_WINDOWS = PLATFORM == "Windows"
+IS_LINUX = PLATFORM == "Linux"
 
-if platform.system() == "Windows":
+if IS_WINDOWS:
     import winreg
-
 
 logger = logging.getLogger("can.pcan")
 
@@ -287,6 +284,12 @@ PCAN_ATTACHED_CHANNELS_COUNT = TPCANParameter(
 PCAN_ATTACHED_CHANNELS = TPCANParameter(
     0x2B
 )  # Get information about PCAN channels attached to a system
+PCAN_ALLOW_ECHO_FRAMES = TPCANParameter(
+    0x2C
+)  # Echo messages reception status within a PCAN-Channel
+PCAN_DEVICE_PART_NUMBER = TPCANParameter(
+    0x2D
+)  # Get the part number associated to a device
 
 # DEPRECATED parameters
 #
@@ -359,8 +362,8 @@ MAX_LENGTH_HARDWARE_NAME = int(
     33
 )  # Maximum length of the name of a device: 32 characters + terminator
 MAX_LENGTH_VERSION_STRING = int(
-    18
-)  # Maximum length of a version string: 17 characters + terminator
+    256
+)  # Maximum length of a version string: 255 characters + terminator
 
 # PCAN message types
 #
@@ -382,6 +385,9 @@ PCAN_MESSAGE_BRS = TPCANMessageType(
 PCAN_MESSAGE_ESI = TPCANMessageType(
     0x10
 )  # The PCAN message represents a FD error state indicator(CAN FD transmitter was error active)
+PCAN_MESSAGE_ECHO = TPCANMessageType(
+    0x20
+)  # The PCAN message represents an echo CAN Frame
 PCAN_MESSAGE_ERRFRAME = TPCANMessageType(
     0x40
 )  # The PCAN message represents an error frame
@@ -554,8 +560,115 @@ class TPCANChannelInformation(Structure):
 
 
 # ///////////////////////////////////////////////////////////
+# Additional objects
+# ///////////////////////////////////////////////////////////
+
+PCAN_BITRATES = {
+    1000000: PCAN_BAUD_1M,
+    800000: PCAN_BAUD_800K,
+    500000: PCAN_BAUD_500K,
+    250000: PCAN_BAUD_250K,
+    125000: PCAN_BAUD_125K,
+    100000: PCAN_BAUD_100K,
+    95000: PCAN_BAUD_95K,
+    83000: PCAN_BAUD_83K,
+    50000: PCAN_BAUD_50K,
+    47000: PCAN_BAUD_47K,
+    33000: PCAN_BAUD_33K,
+    20000: PCAN_BAUD_20K,
+    10000: PCAN_BAUD_10K,
+    5000: PCAN_BAUD_5K,
+}
+
+PCAN_FD_PARAMETER_LIST = (
+    "nom_brp",
+    "nom_tseg1",
+    "nom_tseg2",
+    "nom_sjw",
+    "data_brp",
+    "data_tseg1",
+    "data_tseg2",
+    "data_sjw",
+)
+
+PCAN_CHANNEL_NAMES = {
+    "PCAN_NONEBUS": PCAN_NONEBUS,
+    "PCAN_ISABUS1": PCAN_ISABUS1,
+    "PCAN_ISABUS2": PCAN_ISABUS2,
+    "PCAN_ISABUS3": PCAN_ISABUS3,
+    "PCAN_ISABUS4": PCAN_ISABUS4,
+    "PCAN_ISABUS5": PCAN_ISABUS5,
+    "PCAN_ISABUS6": PCAN_ISABUS6,
+    "PCAN_ISABUS7": PCAN_ISABUS7,
+    "PCAN_ISABUS8": PCAN_ISABUS8,
+    "PCAN_DNGBUS1": PCAN_DNGBUS1,
+    "PCAN_PCIBUS1": PCAN_PCIBUS1,
+    "PCAN_PCIBUS2": PCAN_PCIBUS2,
+    "PCAN_PCIBUS3": PCAN_PCIBUS3,
+    "PCAN_PCIBUS4": PCAN_PCIBUS4,
+    "PCAN_PCIBUS5": PCAN_PCIBUS5,
+    "PCAN_PCIBUS6": PCAN_PCIBUS6,
+    "PCAN_PCIBUS7": PCAN_PCIBUS7,
+    "PCAN_PCIBUS8": PCAN_PCIBUS8,
+    "PCAN_PCIBUS9": PCAN_PCIBUS9,
+    "PCAN_PCIBUS10": PCAN_PCIBUS10,
+    "PCAN_PCIBUS11": PCAN_PCIBUS11,
+    "PCAN_PCIBUS12": PCAN_PCIBUS12,
+    "PCAN_PCIBUS13": PCAN_PCIBUS13,
+    "PCAN_PCIBUS14": PCAN_PCIBUS14,
+    "PCAN_PCIBUS15": PCAN_PCIBUS15,
+    "PCAN_PCIBUS16": PCAN_PCIBUS16,
+    "PCAN_USBBUS1": PCAN_USBBUS1,
+    "PCAN_USBBUS2": PCAN_USBBUS2,
+    "PCAN_USBBUS3": PCAN_USBBUS3,
+    "PCAN_USBBUS4": PCAN_USBBUS4,
+    "PCAN_USBBUS5": PCAN_USBBUS5,
+    "PCAN_USBBUS6": PCAN_USBBUS6,
+    "PCAN_USBBUS7": PCAN_USBBUS7,
+    "PCAN_USBBUS8": PCAN_USBBUS8,
+    "PCAN_USBBUS9": PCAN_USBBUS9,
+    "PCAN_USBBUS10": PCAN_USBBUS10,
+    "PCAN_USBBUS11": PCAN_USBBUS11,
+    "PCAN_USBBUS12": PCAN_USBBUS12,
+    "PCAN_USBBUS13": PCAN_USBBUS13,
+    "PCAN_USBBUS14": PCAN_USBBUS14,
+    "PCAN_USBBUS15": PCAN_USBBUS15,
+    "PCAN_USBBUS16": PCAN_USBBUS16,
+    "PCAN_PCCBUS1": PCAN_PCCBUS1,
+    "PCAN_PCCBUS2": PCAN_PCCBUS2,
+    "PCAN_LANBUS1": PCAN_LANBUS1,
+    "PCAN_LANBUS2": PCAN_LANBUS2,
+    "PCAN_LANBUS3": PCAN_LANBUS3,
+    "PCAN_LANBUS4": PCAN_LANBUS4,
+    "PCAN_LANBUS5": PCAN_LANBUS5,
+    "PCAN_LANBUS6": PCAN_LANBUS6,
+    "PCAN_LANBUS7": PCAN_LANBUS7,
+    "PCAN_LANBUS8": PCAN_LANBUS8,
+    "PCAN_LANBUS9": PCAN_LANBUS9,
+    "PCAN_LANBUS10": PCAN_LANBUS10,
+    "PCAN_LANBUS11": PCAN_LANBUS11,
+    "PCAN_LANBUS12": PCAN_LANBUS12,
+    "PCAN_LANBUS13": PCAN_LANBUS13,
+    "PCAN_LANBUS14": PCAN_LANBUS14,
+    "PCAN_LANBUS15": PCAN_LANBUS15,
+    "PCAN_LANBUS16": PCAN_LANBUS16,
+}
+
+VALID_PCAN_CAN_CLOCKS = [8_000_000]
+
+VALID_PCAN_FD_CLOCKS = [
+    20_000_000,
+    24_000_000,
+    30_000_000,
+    40_000_000,
+    60_000_000,
+    80_000_000,
+]
+
+# ///////////////////////////////////////////////////////////
 # PCAN-Basic API function declarations
 # ///////////////////////////////////////////////////////////
+
 
 # PCAN-Basic API class implementation
 #
@@ -563,32 +676,38 @@ class PCANBasic:
     """PCAN-Basic API class implementation"""
 
     def __init__(self):
-        # Loads the PCANBasic API
-        #
         if platform.system() == "Windows":
-            # Loads the API on Windows
-            self.__m_dllBasic = windll.LoadLibrary("PCANBasic")
-            aReg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
-            try:
-                aKey = winreg.OpenKey(aReg, r"SOFTWARE\PEAK-System\PEAK-Drivers")
-                winreg.CloseKey(aKey)
-            except WindowsError:
-                logger.error("Exception: The PEAK-driver couldn't be found!")
-            finally:
-                winreg.CloseKey(aReg)
-        elif "CYGWIN" in platform.system():
-            self.__m_dllBasic = cdll.LoadLibrary("PCANBasic.dll")
-            # Unfortunately cygwin python has no winreg module, so we can't
-            # check for the registry key.
-        elif platform.system() == "Linux":
-            # Loads the API on Linux
-            self.__m_dllBasic = cdll.LoadLibrary("libpcanbasic.so")
-        elif platform.system() == "Darwin":
-            self.__m_dllBasic = cdll.LoadLibrary(find_library("libPCBUSB.dylib"))
+            load_library_func = windll.LoadLibrary
+
+            # look for Peak drivers in Windows registry
+            with winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE) as reg:
+                try:
+                    with winreg.OpenKey(reg, r"SOFTWARE\PEAK-System\PEAK-Drivers"):
+                        pass
+                except OSError:
+                    raise OSError("The PEAK-driver could not be found!") from None
         else:
-            self.__m_dllBasic = cdll.LoadLibrary("libpcanbasic.so")
-        if self.__m_dllBasic is None:
-            logger.error("Exception: The PCAN-Basic DLL couldn't be loaded!")
+            load_library_func = cdll.LoadLibrary
+
+        if platform.system() == "Windows" or "CYGWIN" in platform.system():
+            lib_name = "PCANBasic"
+        elif platform.system() == "Darwin":
+            # PCBUSB library is a third-party software created
+            # and maintained by the MacCAN project
+            lib_name = "PCBUSB"
+        else:
+            lib_name = "pcanbasic"
+
+        lib_path = find_library(lib_name)
+        if not lib_path:
+            raise OSError(f"{lib_name} library not found.")
+
+        try:
+            self.__m_dllBasic = load_library_func(lib_path)
+        except OSError:
+            raise OSError(
+                f"The PCAN-Basic API could not be loaded. ({lib_path})"
+            ) from None
 
     # Initializes a PCAN Channel
     #
@@ -600,9 +719,7 @@ class PCANBasic:
         IOPort=c_uint(0),
         Interrupt=c_ushort(0),
     ):
-
-        """
-          Initializes a PCAN Channel
+        """Initializes a PCAN Channel
 
         Parameters:
           Channel  : A TPCANHandle representing a PCAN Channel
@@ -626,9 +743,7 @@ class PCANBasic:
     # Initializes a FD capable PCAN Channel
     #
     def InitializeFD(self, Channel, BitrateFD):
-
-        """
-          Initializes a FD capable PCAN Channel
+        """Initializes a FD capable PCAN Channel
 
         Parameters:
           Channel  : The handle of a FD capable PCAN Channel
@@ -658,9 +773,7 @@ class PCANBasic:
     #  Uninitializes one or all PCAN Channels initialized by CAN_Initialize
     #
     def Uninitialize(self, Channel):
-
-        """
-          Uninitializes one or all PCAN Channels initialized by CAN_Initialize
+        """Uninitializes one or all PCAN Channels initialized by CAN_Initialize
 
         Remarks:
           Giving the TPCANHandle value "PCAN_NONEBUS", uninitialize all initialized channels
@@ -681,9 +794,7 @@ class PCANBasic:
     #  Resets the receive and transmit queues of the PCAN Channel
     #
     def Reset(self, Channel):
-
-        """
-          Resets the receive and transmit queues of the PCAN Channel
+        """Resets the receive and transmit queues of the PCAN Channel
 
         Remarks:
           A reset of the CAN controller is not performed
@@ -704,9 +815,7 @@ class PCANBasic:
     #  Gets the current status of a PCAN Channel
     #
     def GetStatus(self, Channel):
-
-        """
-          Gets the current status of a PCAN Channel
+        """Gets the current status of a PCAN Channel
 
         Parameters:
           Channel  : A TPCANHandle representing a PCAN Channel
@@ -724,12 +833,10 @@ class PCANBasic:
     # Reads a CAN message from the receive queue of a PCAN Channel
     #
     def Read(self, Channel):
-
-        """
-          Reads a CAN message from the receive queue of a PCAN Channel
+        """Reads a CAN message from the receive queue of a PCAN Channel
 
         Remarks:
-          The return value of this method is a 3-touple, where
+          The return value of this method is a 3-tuple, where
           the first value is the result (TPCANStatus) of the method.
           The order of the values are:
           [0]: A TPCANStatus error code
@@ -740,7 +847,7 @@ class PCANBasic:
           Channel  : A TPCANHandle representing a PCAN Channel
 
         Returns:
-          A touple with three values
+          A tuple with three values
         """
         try:
             msg = TPCANMsg()
@@ -754,12 +861,10 @@ class PCANBasic:
     # Reads a CAN message from the receive queue of a FD capable PCAN Channel
     #
     def ReadFD(self, Channel):
-
-        """
-          Reads a CAN message from the receive queue of a FD capable PCAN Channel
+        """Reads a CAN message from the receive queue of a FD capable PCAN Channel
 
         Remarks:
-          The return value of this method is a 3-touple, where
+          The return value of this method is a 3-tuple, where
           the first value is the result (TPCANStatus) of the method.
           The order of the values are:
           [0]: A TPCANStatus error code
@@ -770,7 +875,7 @@ class PCANBasic:
           Channel  : The handle of a FD capable PCAN Channel
 
         Returns:
-          A touple with three values
+          A tuple with three values
         """
         try:
             msg = TPCANMsgFD()
@@ -784,9 +889,7 @@ class PCANBasic:
     # Transmits a CAN message
     #
     def Write(self, Channel, MessageBuffer):
-
-        """
-          Transmits a CAN message
+        """Transmits a CAN message
 
         Parameters:
           Channel      : A TPCANHandle representing a PCAN Channel
@@ -805,9 +908,7 @@ class PCANBasic:
     # Transmits a CAN message over a FD capable PCAN Channel
     #
     def WriteFD(self, Channel, MessageBuffer):
-
-        """
-          Transmits a CAN message over a FD capable PCAN Channel
+        """Transmits a CAN message over a FD capable PCAN Channel
 
         Parameters:
           Channel      : The handle of a FD capable PCAN Channel
@@ -826,9 +927,7 @@ class PCANBasic:
     # Configures the reception filter
     #
     def FilterMessages(self, Channel, FromID, ToID, Mode):
-
-        """
-          Configures the reception filter
+        """Configures the reception filter
 
         Remarks:
           The message filter will be expanded with every call to this function.
@@ -854,16 +953,14 @@ class PCANBasic:
     # Retrieves a PCAN Channel value
     #
     def GetValue(self, Channel, Parameter):
-
-        """
-          Retrieves a PCAN Channel value
+        """Retrieves a PCAN Channel value
 
         Remarks:
           Parameters can be present or not according with the kind
           of Hardware (PCAN Channel) being used. If a parameter is not available,
           a PCAN_ERROR_ILLPARAMTYPE error will be returned.
 
-          The return value of this method is a 2-touple, where
+          The return value of this method is a 2-tuple, where
           the first value is the result (TPCANStatus) of the method and
           the second one, the asked value
 
@@ -872,7 +969,7 @@ class PCANBasic:
           Parameter : The TPCANParameter parameter to get
 
         Returns:
-          A touple with 2 values
+          A tuple with 2 values
         """
         try:
             if (
@@ -884,6 +981,7 @@ class PCANBasic:
                 or Parameter == PCAN_BITRATE_INFO_FD
                 or Parameter == PCAN_IP_ADDRESS
                 or Parameter == PCAN_FIRMWARE_VERSION
+                or Parameter == PCAN_DEVICE_PART_NUMBER
             ):
                 mybuffer = create_string_buffer(256)
 
@@ -892,6 +990,12 @@ class PCANBasic:
                 if TPCANStatus(res[0]) != PCAN_ERROR_OK:
                     return (TPCANStatus(res[0]),)
                 mybuffer = (TPCANChannelInformation * res[1])()
+
+            elif (
+                Parameter == PCAN_ACCEPTANCE_FILTER_11BIT
+                or PCAN_ACCEPTANCE_FILTER_29BIT
+            ):
+                mybuffer = c_int64(0)
 
             else:
                 mybuffer = c_int(0)
@@ -911,10 +1015,8 @@ class PCANBasic:
     # error code, in any desired language
     #
     def SetValue(self, Channel, Parameter, Buffer):
-
-        """
-          Returns a descriptive text of a given TPCANStatus error
-          code, in any desired language
+        """Returns a descriptive text of a given TPCANStatus error
+        code, in any desired language
 
         Remarks:
           Parameters can be present or not according with the kind
@@ -937,6 +1039,11 @@ class PCANBasic:
                 or Parameter == PCAN_TRACE_LOCATION
             ):
                 mybuffer = create_string_buffer(256)
+            elif (
+                Parameter == PCAN_ACCEPTANCE_FILTER_11BIT
+                or PCAN_ACCEPTANCE_FILTER_29BIT
+            ):
+                mybuffer = c_int64(0)
             else:
                 mybuffer = c_int(0)
 
@@ -950,9 +1057,7 @@ class PCANBasic:
             raise
 
     def GetErrorText(self, Error, Language=0):
-
-        """
-          Configures or sets a PCAN Channel value
+        """Configures or sets a PCAN Channel value
 
         Remarks:
 
@@ -960,7 +1065,7 @@ class PCANBasic:
           Neutral (0x00), German (0x07), English (0x09), Spanish (0x0A),
           Italian (0x10) and French (0x0C)
 
-          The return value of this method is a 2-touple, where
+          The return value of this method is a 2-tuple, where
           the first value is the result (TPCANStatus) of the method and
           the second one, the error text
 
@@ -969,7 +1074,7 @@ class PCANBasic:
           Language : Indicates a 'Primary language ID' (Default is Neutral(0))
 
         Returns:
-          A touple with 2 values
+          A tuple with 2 values
         """
         try:
             mybuffer = create_string_buffer(256)
@@ -980,13 +1085,11 @@ class PCANBasic:
             raise
 
     def LookUpChannel(self, Parameters):
-
-        """
-            Finds a PCAN-Basic channel that matches with the given parameters
+        """Finds a PCAN-Basic channel that matches with the given parameters
 
         Remarks:
 
-          The return value of this method is a 2-touple, where
+          The return value of this method is a 2-tuple, where
           the first value is the result (TPCANStatus) of the method and
           the second one a TPCANHandle value
 
@@ -995,7 +1098,7 @@ class PCANBasic:
                            to be matched within a PCAN-Basic channel
 
         Returns:
-          A touple with 2 values
+          A tuple with 2 values
         """
         try:
             mybuffer = TPCANHandle(0)

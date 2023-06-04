@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 """
 This module tests that the scripts are all callable.
 """
 
-import subprocess
-import unittest
-import sys
 import errno
+import subprocess
+import sys
+import unittest
 from abc import ABCMeta, abstractmethod
 
 from .config import *
@@ -75,10 +74,8 @@ class TestLoggerScript(CanScriptTest):
     def _commands(self):
         commands = [
             "python -m can.logger --help",
-            "python scripts/can_logger.py --help",
+            "can_logger --help",
         ]
-        if IS_UNIX:
-            commands += ["can_logger.py --help"]
         return commands
 
     def _import(self):
@@ -91,14 +88,26 @@ class TestPlayerScript(CanScriptTest):
     def _commands(self):
         commands = [
             "python -m can.player --help",
-            "python scripts/can_player.py --help",
+            "can_player --help",
         ]
-        if IS_UNIX:
-            commands += ["can_player.py --help"]
         return commands
 
     def _import(self):
         import can.player as module
+
+        return module
+
+
+class TestLogconvertScript(CanScriptTest):
+    def _commands(self):
+        commands = [
+            "python -m can.logconvert --help",
+            "can_logconvert --help",
+        ]
+        return commands
+
+    def _import(self):
+        import can.logconvert as module
 
         return module
 

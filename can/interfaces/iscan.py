@@ -3,16 +3,18 @@ Interface for isCAN from *Thorsis Technologies GmbH*, former *ifak system GmbH*.
 """
 
 import ctypes
-import time
 import logging
+import time
 from typing import Optional, Tuple, Union
 
-from can import BusABC, Message
 from can import (
+    BusABC,
     CanError,
-    CanInterfaceNotImplementedError,
     CanInitializationError,
+    CanInterfaceNotImplementedError,
     CanOperationError,
+    CanProtocol,
+    Message,
 )
 
 logger = logging.getLogger(__name__)
@@ -98,6 +100,7 @@ class IscanBus(BusABC):
 
         self.channel = ctypes.c_ubyte(int(channel))
         self.channel_info = f"IS-CAN: {self.channel}"
+        self._can_protocol = CanProtocol.CAN_20
 
         if bitrate not in self.BAUDRATES:
             raise ValueError(f"Invalid bitrate, choose one of {set(self.BAUDRATES)}")
@@ -106,7 +109,10 @@ class IscanBus(BusABC):
         iscan.isCAN_DeviceInitEx(self.channel, self.BAUDRATES[bitrate])
 
         super().__init__(
-            channel=channel, bitrate=bitrate, poll_interval=poll_interval, **kwargs
+            channel=channel,
+            bitrate=bitrate,
+            poll_interval=poll_interval,
+            **kwargs,
         )
 
     def _recv_internal(
@@ -152,11 +158,11 @@ class IscanBus(BusABC):
         iscan.isCAN_TransmitMessageEx(self.channel, ctypes.byref(raw_msg))
 
     def shutdown(self) -> None:
+        super().shutdown()
         iscan.isCAN_CloseDevice(self.channel)
 
 
 class IscanError(CanError):
-
     ERROR_CODES = {
         0: "Success",
         1: "No access to device",
@@ -186,12 +192,12 @@ class IscanError(CanError):
 
     def __init__(self, function, error_code: int, arguments) -> None:
         try:
-            description = ": " + self.ERROR_CODES[self.error_code]
+            description = ": " + self.ERROR_CODES[error_code]
         except KeyError:
             description = ""
 
         super().__init__(
-            f"Function {self.function.__name__} failed{description}",
+            f"Function {function.__name__} failed{description}",
             error_code=error_code,
         )
 

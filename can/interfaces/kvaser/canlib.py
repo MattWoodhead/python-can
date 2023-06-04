@@ -6,15 +6,15 @@ specific to Python.
 Copyright (C) 2010 Dynamic Controls
 """
 
+import ctypes
+import logging
 import sys
 import time
-import logging
-import ctypes
 
-from can import BusABC
-from ...exceptions import CanError, CanInitializationError, CanOperationError
-from can import Message
+from can import BusABC, CanProtocol, Message
 from can.util import time_perfcounter_correlation
+
+from ...exceptions import CanError, CanInitializationError, CanOperationError
 from . import constants as canstat
 from . import structures
 
@@ -410,8 +410,8 @@ class KvaserBus(BusABC):
 
         """
 
-        log.info("CAN Filters: {}".format(can_filters))
-        log.info("Got configuration of: {}".format(kwargs))
+        log.info(f"CAN Filters: {can_filters}")
+        log.info(f"Got configuration of: {kwargs}")
         bitrate = kwargs.get("bitrate", 500000)
         tseg1 = kwargs.get("tseg1", 0)
         tseg2 = kwargs.get("tseg2", 0)
@@ -428,11 +428,12 @@ class KvaserBus(BusABC):
             channel = int(channel)
         except ValueError:
             raise ValueError("channel must be an integer")
+
         self.channel = channel
+        self.single_handle = single_handle
+        self._can_protocol = CanProtocol.CAN_FD if fd else CanProtocol.CAN_20
 
         log.debug("Initialising bus instance")
-        self.single_handle = single_handle
-
         num_channels = ctypes.c_int(0)
         canGetNumberOfChannels(ctypes.byref(num_channels))
         num_channels = int(num_channels.value)
@@ -520,7 +521,11 @@ class KvaserBus(BusABC):
             self._timestamp_offset = time.time() - (timer.value * TIMESTAMP_FACTOR)
 
         self._is_filtered = False
-        super().__init__(channel=channel, can_filters=can_filters, **kwargs)
+        super().__init__(
+            channel=channel,
+            can_filters=can_filters,
+            **kwargs,
+        )
 
     def _apply_filters(self, filters):
         if filters and len(filters) == 1:
@@ -643,6 +648,7 @@ class KvaserBus(BusABC):
             log.error("Could not flash LEDs (%s)", e)
 
     def shutdown(self):
+        super().shutdown()
         # Wait for transmit queue to be cleared
         try:
             canWriteSync(self._write_handle, 100)
@@ -656,17 +662,25 @@ class KvaserBus(BusABC):
         canBusOff(self._write_handle)
         canClose(self._write_handle)
 
-    def get_stats(self):
+    def get_stats(self) -> structures.BusStatistics:
         """Retrieves the bus statistics.
 
         Use like so:
 
-        >>> stats = bus.get_stats()
-        >>> print(stats)
-        std_data: 0, std_remote: 0, ext_data: 0, ext_remote: 0, err_frame: 0, bus_load: 0.0%, overruns: 0
+        .. testsetup:: kvaser
+
+            from unittest.mock import Mock
+            from can.interfaces.kvaser.structures import BusStatistics
+            bus = Mock()
+            bus.get_stats = Mock(side_effect=lambda: BusStatistics())
+
+        .. doctest:: kvaser
+
+            >>> stats = bus.get_stats()
+            >>> print(stats)
+            std_data: 0, std_remote: 0, ext_data: 0, ext_remote: 0, err_frame: 0, bus_load: 0.0%, overruns: 0
 
         :returns: bus statistics.
-        :rtype: can.interfaces.kvaser.structures.BusStatistics
         """
         canRequestBusStatistics(self._write_handle)
         stats = structures.BusStatistics()
@@ -713,11 +727,7 @@ def get_channel_info(channel):
         ctypes.sizeof(number),
     )
 
-    return "%s, S/N %d (#%d)" % (
-        name.value.decode("ascii"),
-        serial.value,
-        number.value + 1,
-    )
+    return f"{name.value.decode('ascii')}, S/N {serial.value} (#{number.value + 1})"
 
 
 init_kvaser_library()

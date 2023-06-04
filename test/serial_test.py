@@ -12,9 +12,8 @@ from unittest.mock import patch
 import can
 from can.interfaces.serial.serial_can import SerialBus
 
-from .message_helper import ComparingMessagesTestCase
 from .config import IS_PYPY
-
+from .message_helper import ComparingMessagesTestCase
 
 # Mentioned in #1010
 TIMEOUT = 0.5 if IS_PYPY else 0.1  # 0.1 is the default set in SerialBus
@@ -44,13 +43,15 @@ class SerialDummy:
 
 
 class SimpleSerialTestBase(ComparingMessagesTestCase):
-
     MAX_TIMESTAMP = 0xFFFFFFFF / 1000
 
     def __init__(self):
         ComparingMessagesTestCase.__init__(
             self, allowed_timestamp_delta=None, preserves_channel=True
         )
+
+    def test_can_protocol(self):
+        self.assertEqual(self.bus.protocol, can.CanProtocol.CAN_20)
 
     def test_rx_tx_min_max_data(self):
         """
@@ -135,6 +136,24 @@ class SimpleSerialTestBase(ComparingMessagesTestCase):
         """
         msg = can.Message(timestamp=-1)
         self.assertRaises(ValueError, self.bus.send, msg)
+
+    def test_when_no_fileno(self):
+        """
+        Tests for the fileno method catching the missing pyserial implementeation on the Windows platform
+        """
+        try:
+            fileno = self.bus.fileno()
+        except NotImplementedError:
+            pass  # allow it to be left non-implemented for Windows platform
+        else:
+            fileno.__gt__ = (
+                lambda self, compare: True
+            )  # Current platform implements fileno, so get the mock to respond to a greater than comparison
+            self.assertIsNotNone(fileno)
+            self.assertFalse(
+                fileno == -1
+            )  # forcing the value to -1 is the old way of managing fileno on Windows but it is not compatible with notifiers
+            self.assertTrue(fileno > 0)
 
 
 class SimpleSerialTest(unittest.TestCase, SimpleSerialTestBase):

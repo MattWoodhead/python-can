@@ -1,17 +1,23 @@
 """Types for mypy type-checking
 """
-
+import gzip
 import typing
 
 if typing.TYPE_CHECKING:
     import os
 
-import typing_extensions
 
-CanFilter = typing_extensions.TypedDict("CanFilter", {"can_id": int, "can_mask": int})
-CanFilterExtended = typing_extensions.TypedDict(
-    "CanFilterExtended", {"can_id": int, "can_mask": int, "extended": bool}
-)
+class CanFilter(typing.TypedDict):
+    can_id: int
+    can_mask: int
+
+
+class CanFilterExtended(typing.TypedDict):
+    can_id: int
+    can_mask: int
+    extended: bool
+
+
 CanFilters = typing.Sequence[typing.Union[CanFilter, CanFilterExtended]]
 
 # TODO: Once buffer protocol support lands in typing, we should switch to that,
@@ -27,14 +33,37 @@ ChannelInt = int
 Channel = typing.Union[ChannelInt, ChannelStr]
 
 # Used by the IO module
-FileLike = typing.IO[typing.Any]
+FileLike = typing.Union[typing.TextIO, typing.BinaryIO, gzip.GzipFile]
 StringPathLike = typing.Union[str, "os.PathLike[str]"]
-AcceptedIOType = typing.Optional[typing.Union[FileLike, StringPathLike]]
+AcceptedIOType = typing.Union[FileLike, StringPathLike]
 
 BusConfig = typing.NewType("BusConfig", typing.Dict[str, typing.Any])
 
-AutoDetectedConfig = typing_extensions.TypedDict(
-    "AutoDetectedConfig", {"interface": str, "channel": Channel}
-)
+
+class AutoDetectedConfig(typing.TypedDict):
+    interface: str
+    channel: Channel
+
 
 ReadableBytesLike = typing.Union[bytes, bytearray, memoryview]
+
+
+class BitTimingDict(typing.TypedDict):
+    f_clock: int
+    brp: int
+    tseg1: int
+    tseg2: int
+    sjw: int
+    nof_samples: int
+
+
+class BitTimingFdDict(typing.TypedDict):
+    f_clock: int
+    nom_brp: int
+    nom_tseg1: int
+    nom_tseg2: int
+    nom_sjw: int
+    data_brp: int
+    data_tseg1: int
+    data_tseg2: int
+    data_sjw: int

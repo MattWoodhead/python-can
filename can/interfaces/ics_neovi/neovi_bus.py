@@ -1,8 +1,8 @@
 """
-ICS NeoVi interface module.
+Intrepid Control Systems (ICS) neoVI interface module.
 
 python-ics is a Python wrapper around the API provided by Intrepid Control
-Systems for communicating with their NeoVI range of devices.
+Systems for communicating with their neoVI range of devices.
 
 Implementation references:
 * https://github.com/intrepidcs/python_ics
@@ -11,17 +11,18 @@ Implementation references:
 import logging
 import os
 import tempfile
-from collections import deque, defaultdict, Counter
+from collections import Counter, defaultdict, deque
 from itertools import cycle
 from threading import Event
 from warnings import warn
 
-from can import Message, BusABC
+from can import BusABC, CanProtocol, Message
+
 from ...exceptions import (
     CanError,
-    CanTimeoutError,
-    CanOperationError,
     CanInitializationError,
+    CanOperationError,
+    CanTimeoutError,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ try:
     import ics
 except ImportError as ie:
     logger.warning(
-        "You won't be able to use the ICS NeoVi can backend without the "
+        "You won't be able to use the ICS neoVI can backend without the "
         "python-ics module installed!: %s",
         ie,
     )
@@ -40,9 +41,8 @@ except ImportError as ie:
 try:
     from filelock import FileLock
 except ImportError as ie:
-
     logger.warning(
-        "Using ICS NeoVi can backend without the "
+        "Using ICS neoVI can backend without the "
         "filelock module installed may cause some issues!: %s",
         ie,
     )
@@ -94,6 +94,15 @@ class ICSApiError(CanError):
         self.description_long = description_long
         self.severity = severity
         self.restart_needed = restart_needed == 1
+
+    def __reduce__(self):
+        return type(self), (
+            self.error_code,
+            self.description_short,
+            self.description_long,
+            self.severity,
+            self.restart_needed,
+        )
 
     @property
     def error_number(self) -> int:
@@ -160,10 +169,14 @@ class NeoViBus(BusABC):
         if ics is None:
             raise ImportError("Please install python-ics")
 
-        super().__init__(channel=channel, can_filters=can_filters, **kwargs)
+        super().__init__(
+            channel=channel,
+            can_filters=can_filters,
+            **kwargs,
+        )
 
-        logger.info("CAN Filters: {}".format(can_filters))
-        logger.info("Got configuration of: {}".format(kwargs))
+        logger.info(f"CAN Filters: {can_filters}")
+        logger.info(f"Got configuration of: {kwargs}")
 
         if "override_library_name" in kwargs:
             ics.override_library_name(kwargs.get("override_library_name"))
@@ -181,6 +194,9 @@ class NeoViBus(BusABC):
         serial = kwargs.get("serial")
         self.dev = self._find_device(type_filter, serial)
 
+        is_fd = kwargs.get("fd", False)
+        self._can_protocol = CanProtocol.CAN_FD if is_fd else CanProtocol.CAN_20
+
         with open_lock:
             ics.open_device(self.dev)
 
@@ -189,7 +205,7 @@ class NeoViBus(BusABC):
                 for channel in self.channels:
                     ics.set_bit_rate(self.dev, kwargs.get("bitrate"), channel)
 
-            if kwargs.get("fd", False):
+            if is_fd:
                 if "data_bitrate" in kwargs:
                     for channel in self.channels:
                         ics.set_fd_bit_rate(
@@ -206,12 +222,12 @@ class NeoViBus(BusABC):
         self._use_system_timestamp = bool(kwargs.get("use_system_timestamp", False))
         self._receive_own_messages = kwargs.get("receive_own_messages", True)
 
-        self.channel_info = "%s %s CH:%s" % (
+        self.channel_info = "{} {} CH:{}".format(
             self.dev.Name,
             self.get_serial_number(self.dev),
             self.channels,
         )
-        logger.info("Using device: {}".format(self.channel_info))
+        logger.info(f"Using device: {self.channel_info}")
 
         self.rx_buffer = deque()
         self.message_receipts = defaultdict(Event)
@@ -221,13 +237,13 @@ class NeoViBus(BusABC):
         try:
             channel = int(channel_name_or_id)
         except ValueError:
-            netid = "NETID_{}".format(channel_name_or_id.upper())
+            netid = f"NETID_{channel_name_or_id.upper()}"
             if hasattr(ics, netid):
                 channel = getattr(ics, netid)
             else:
                 raise ValueError(
-                    "channel must be an integer or " "a valid ICS channel name"
-                )
+                    "channel must be an integer or a valid ICS channel name"
+                ) from None
         return channel
 
     @staticmethod
@@ -289,9 +305,9 @@ class NeoViBus(BusABC):
             msg = ["No device"]
 
             if type_filter is not None:
-                msg.append("with type {}".format(type_filter))
+                msg.append(f"with type {type_filter}")
             if serial is not None:
-                msg.append("with serial {}".format(serial))
+                msg.append(f"with serial {serial}")
             msg.append("found.")
             raise CanInitializationError(" ".join(msg))
 
@@ -309,8 +325,9 @@ class NeoViBus(BusABC):
             if is_tx:
                 if bool(ics_msg.StatusBitField & ics.SPY_STATUS_GLOBAL_ERR):
                     continue
-                if ics_msg.DescriptionID:
-                    receipt_key = (ics_msg.ArbIDOrHeader, ics_msg.DescriptionID)
+
+                receipt_key = (ics_msg.ArbIDOrHeader, ics_msg.DescriptionID)
+                if ics_msg.DescriptionID and receipt_key in self.message_receipts:
                     self.message_receipts[receipt_key].set()
                 if not self._receive_own_messages:
                     continue
@@ -364,6 +381,9 @@ class NeoViBus(BusABC):
                 is_remote_frame=bool(
                     ics_msg.StatusBitField & ics.SPY_STATUS_REMOTE_FRAME
                 ),
+                is_error_frame=bool(
+                    ics_msg.StatusBitField2 & ics.SPY_STATUS2_ERROR_FRAME
+                ),
                 error_state_indicator=bool(
                     ics_msg.StatusBitField3 & ics.SPY_STATUS3_CANFD_ESI
                 ),
@@ -383,6 +403,9 @@ class NeoViBus(BusABC):
                 is_rx=not bool(ics_msg.StatusBitField & ics.SPY_STATUS_TX_MSG),
                 is_remote_frame=bool(
                     ics_msg.StatusBitField & ics.SPY_STATUS_REMOTE_FRAME
+                ),
+                is_error_frame=bool(
+                    ics_msg.StatusBitField2 & ics.SPY_STATUS2_ERROR_FRAME
                 ),
                 channel=ics_msg.NetworkID,
             )
@@ -417,6 +440,18 @@ class NeoViBus(BusABC):
         """
         if not ics.validate_hobject(self.dev):
             raise CanOperationError("bus not open")
+
+        # Check for valid DLC to avoid passing extra long data to the driver
+        if msg.is_fd:
+            if msg.dlc > 64:
+                raise ValueError(
+                    f"DLC was {msg.dlc} but it should be <= 64 for CAN FD frames"
+                )
+        elif msg.dlc > 8:
+            raise ValueError(
+                f"DLC was {msg.dlc} but it should be <= 8 for normal CAN frames"
+            )
+
         message = ics.SpyMessage()
 
         flag0 = 0
@@ -434,8 +469,8 @@ class NeoViBus(BusABC):
                 flag3 |= ics.SPY_STATUS3_CANFD_ESI
 
         message.ArbIDOrHeader = msg.arbitration_id
-        msg_data = msg.data
-        message.NumberBytesData = len(msg_data)
+        msg_data = msg.data[: msg.dlc]
+        message.NumberBytesData = msg.dlc
         message.Data = tuple(msg_data[:8])
         if msg.is_fd and len(msg_data) > 8:
             message.ExtraDataPtrEnabled = 1
@@ -450,11 +485,10 @@ class NeoViBus(BusABC):
         else:
             raise ValueError("msg.channel must be set when using multiple channels.")
 
-        msg_desc_id = next(description_id)
-        message.DescriptionID = msg_desc_id
-        receipt_key = (msg.arbitration_id, msg_desc_id)
-
         if timeout != 0:
+            msg_desc_id = next(description_id)
+            message.DescriptionID = msg_desc_id
+            receipt_key = (msg.arbitration_id, msg_desc_id)
             self.message_receipts[receipt_key].clear()
 
         try:
@@ -465,5 +499,9 @@ class NeoViBus(BusABC):
         # If timeout is set, wait for ACK
         # This requires a notifier for the bus or
         # some other thread calling recv periodically
-        if timeout != 0 and not self.message_receipts[receipt_key].wait(timeout):
-            raise CanTimeoutError("Transmit timeout")
+        if timeout != 0:
+            got_receipt = self.message_receipts[receipt_key].wait(timeout)
+            # We no longer need this receipt, so no point keeping it in memory
+            del self.message_receipts[receipt_key]
+            if not got_receipt:
+                raise CanTimeoutError("Transmit timeout")

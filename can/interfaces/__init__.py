@@ -2,8 +2,40 @@
 Interfaces contain low level implementations that interact with CAN hardware.
 """
 
+from typing import Dict, Tuple
+
+from can._entry_points import read_entry_points
+
+__all__ = [
+    "BACKENDS",
+    "VALID_INTERFACES",
+    "canalystii",
+    "cantact",
+    "etas",
+    "gs_usb",
+    "ics_neovi",
+    "iscan",
+    "ixxat",
+    "kvaser",
+    "neousys",
+    "nican",
+    "nixnet",
+    "pcan",
+    "robotell",
+    "seeedstudio",
+    "serial",
+    "slcan",
+    "socketcan",
+    "socketcand",
+    "systec",
+    "udp_multicast",
+    "usb2can",
+    "vector",
+    "virtual",
+]
+
 # interface_name => (module, classname)
-BACKENDS = {
+BACKENDS: Dict[str, Tuple[str, str]] = {
     "kvaser": ("can.interfaces.kvaser", "KvaserBus"),
     "socketcan": ("can.interfaces.socketcan", "SocketcanBus"),
     "serial": ("can.interfaces.serial.serial_can", "SerialBus"),
@@ -25,28 +57,16 @@ BACKENDS = {
     "gs_usb": ("can.interfaces.gs_usb", "GsUsbBus"),
     "nixnet": ("can.interfaces.nixnet", "NiXNETcanBus"),
     "neousys": ("can.interfaces.neousys", "NeousysBus"),
+    "etas": ("can.interfaces.etas", "EtasBus"),
+    "socketcand": ("can.interfaces.socketcand", "SocketCanDaemonBus"),
 }
 
-try:
-    from importlib.metadata import entry_points
 
-    entry = entry_points()
-    if "can.interface" in entry:
-        BACKENDS.update(
-            {
-                interface.name: tuple(interface.value.split(":"))
-                for interface in entry["can.interface"]
-            }
-        )
-except ImportError:
-    from pkg_resources import iter_entry_points
+BACKENDS.update(
+    {
+        interface.key: (interface.module_name, interface.class_name)
+        for interface in read_entry_points(group="can.interface")
+    }
+)
 
-    entry = iter_entry_points("can.interface")
-    BACKENDS.update(
-        {
-            interface.name: (interface.module_name, interface.attrs[0])
-            for interface in entry
-        }
-    )
-
-VALID_INTERFACES = frozenset(list(BACKENDS.keys()))
+VALID_INTERFACES = frozenset(sorted(BACKENDS.keys()))

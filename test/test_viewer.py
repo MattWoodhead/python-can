@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# coding: utf-8
+#!/usr/bin/env python
 #
 # Copyright (C) 2018 Kristian Sloth Lauszus.
 #
@@ -31,14 +30,13 @@ import struct
 import time
 import unittest
 from collections import defaultdict
-from typing import Dict, Tuple, Union
+from test.config import IS_CI
 from unittest.mock import patch
 
 import pytest
 
 import can
 from can.viewer import CanViewer, parse_args
-
 
 # Allow the curses module to be missing (e.g. on PyPy on Windows)
 try:
@@ -102,7 +100,12 @@ class StdscrDummy:
             return curses.ascii.SP  # Unpause
         elif self.key_counter == 5:
             return ord("s")  # Sort
-
+        # Turn on byte highlighting (toggle)
+        elif self.key_counter == 6:
+            return ord("h")
+        # Turn off byte highlighting (toggle)
+        elif self.key_counter == 7:
+            return ord("h")
         # Keep scrolling until it exceeds the number of messages
         elif self.key_counter <= 100:
             return curses.KEY_DOWN
@@ -184,6 +187,16 @@ class CanViewerTest(unittest.TestCase):
         msg = can.Message(arbitration_id=0x101, data=data, is_extended_id=False)
         self.can_viewer.bus.send(msg)
 
+        # Send non-CANopen message with long parsed data length
+        data = [255, 255]
+        msg = can.Message(arbitration_id=0x102, data=data, is_extended_id=False)
+        self.can_viewer.bus.send(msg)
+
+        # Send the same command, but with shorter parsed data length
+        data = [0, 0]
+        msg = can.Message(arbitration_id=0x102, data=data, is_extended_id=False)
+        self.can_viewer.bus.send(msg)
+
         # Message with extended id
         data = [1, 2, 3, 4, 5, 6, 7, 8]
         msg = can.Message(arbitration_id=0x123456, data=data, is_extended_id=True)
@@ -206,6 +219,8 @@ class CanViewerTest(unittest.TestCase):
             # For converting the EMCY and HEARTBEAT messages
             0x080 + 0x01: struct.Struct("<HBLB"),
             0x700 + 0x7F: struct.Struct("<B"),
+            # Shorter parsed data length
+            0x102: struct.Struct("<BB"),
             # Big-endian and float test
             0x123456: struct.Struct(">ff"),
         }
@@ -225,14 +240,20 @@ class CanViewerTest(unittest.TestCase):
                     for col, v in self.stdscr_dummy.draw_buffer[_id["row"]].items():
                         if col >= 52 + _id["msg"].dlc * 3:
                             self.assertEqual(v, " ")
+                elif _id["msg"].arbitration_id == 0x102:
+                    # Make sure the parsed values have been cleared after the shorted message was send
+                    for col, v in self.stdscr_dummy.draw_buffer[_id["row"]].items():
+                        if col >= 77 + _id["values_string_length"]:
+                            self.assertEqual(v, " ")
                 elif _id["msg"].arbitration_id == 0x123456:
                     # Check if the counter is incremented
                     if _id["dt"] == 0:
                         self.assertEqual(_id["count"], 1)
                     else:
-                        self.assertTrue(
-                            pytest.approx(_id["dt"], 0.1)
-                        )  # dt should be ~0.1 s
+                        if not IS_CI:  # do not test timing in CI
+                            assert _id["dt"] == pytest.approx(
+                                0.1, abs=5e-2
+                            )  # dt should be ~0.1 s
                         self.assertEqual(_id["count"], 2)
                 else:
                     # Make sure dt is 0
@@ -280,7 +301,7 @@ class CanViewerTest(unittest.TestCase):
 
                 return struct_t.pack(*data)
         else:
-            raise ValueError("Unknown command: 0x{:02X}".format(cmd))
+            raise ValueError(f"Unknown command: 0x{cmd:02X}")
 
     def test_pack_unpack(self):
         CANOPEN_TPDO1 = 0x180
@@ -326,7 +347,7 @@ class CanViewerTest(unittest.TestCase):
 
         raw_data = self.pack_data(CANOPEN_TPDO2 + 1, data_structs, 12.34, 4.5, 6)
         parsed_data = CanViewer.unpack_data(CANOPEN_TPDO2 + 1, data_structs, raw_data)
-        self.assertTrue(pytest.approx(parsed_data, [12.34, 4.5, 6]))
+        assert parsed_data == pytest.approx([12.34, 4.5, 6])
         self.assertTrue(
             isinstance(parsed_data[0], float)
             and isinstance(parsed_data[1], float)
@@ -335,14 +356,14 @@ class CanViewerTest(unittest.TestCase):
 
         raw_data = self.pack_data(CANOPEN_TPDO3 + 1, data_structs, 123.45, 67.89)
         parsed_data = CanViewer.unpack_data(CANOPEN_TPDO3 + 1, data_structs, raw_data)
-        self.assertTrue(pytest.approx(parsed_data, [123.45, 67.89]))
+        assert parsed_data == pytest.approx([123.45, 67.89])
         self.assertTrue(all(isinstance(d, float) for d in parsed_data))
 
         raw_data = self.pack_data(
             CANOPEN_TPDO4 + 1, data_structs, math.pi / 2.0, math.pi
         )
         parsed_data = CanViewer.unpack_data(CANOPEN_TPDO4 + 1, data_structs, raw_data)
-        self.assertTrue(pytest.approx(parsed_data, [math.pi / 2.0, math.pi]))
+        assert parsed_data == pytest.approx([math.pi / 2.0, math.pi])
         self.assertTrue(all(isinstance(d, float) for d in parsed_data))
 
         raw_data = self.pack_data(CANOPEN_TPDO1 + 2, data_structs)
@@ -376,19 +397,19 @@ class CanViewerTest(unittest.TestCase):
             )
 
     def test_parse_args(self):
-        parsed_args, _, _ = parse_args(["-b", "250000"])
+        parsed_args, _, _, _ = parse_args(["-b", "250000"])
         self.assertEqual(parsed_args.bitrate, 250000)
 
-        parsed_args, _, _ = parse_args(["--bitrate", "500000"])
+        parsed_args, _, _, _ = parse_args(["--bitrate", "500000"])
         self.assertEqual(parsed_args.bitrate, 500000)
 
-        parsed_args, _, _ = parse_args(["-c", "can0"])
+        parsed_args, _, _, _ = parse_args(["-c", "can0"])
         self.assertEqual(parsed_args.channel, "can0")
 
-        parsed_args, _, _ = parse_args(["--channel", "PCAN_USBBUS1"])
+        parsed_args, _, _, _ = parse_args(["--channel", "PCAN_USBBUS1"])
         self.assertEqual(parsed_args.channel, "PCAN_USBBUS1")
 
-        parsed_args, _, data_structs = parse_args(["-d", "100:<L"])
+        parsed_args, _, data_structs, _ = parse_args(["-d", "100:<L"])
         self.assertEqual(parsed_args.decode, ["100:<L"])
 
         self.assertIsInstance(data_structs, dict)
@@ -401,7 +422,7 @@ class CanViewerTest(unittest.TestCase):
         f = open("test.txt", "w")
         f.write("100:<BB\n101:<HH\n")
         f.close()
-        parsed_args, _, data_structs = parse_args(["-d", "test.txt"])
+        parsed_args, _, data_structs, _ = parse_args(["-d", "test.txt"])
 
         self.assertIsInstance(data_structs, dict)
         self.assertEqual(len(data_structs), 2)
@@ -415,7 +436,7 @@ class CanViewerTest(unittest.TestCase):
         self.assertEqual(data_structs[0x101].size, 4)
         os.remove("test.txt")
 
-        parsed_args, _, data_structs = parse_args(
+        parsed_args, _, data_structs, _ = parse_args(
             ["--decode", "100:<LH:10.:100.", "101:<ff", "102:<Bf:1:57.3"]
         )
         self.assertEqual(
@@ -448,14 +469,14 @@ class CanViewerTest(unittest.TestCase):
         self.assertEqual(data_structs[0x102][1], 1)
         self.assertAlmostEqual(data_structs[0x102][2], 57.3)
 
-        parsed_args, can_filters, _ = parse_args(["-f", "100:7FF"])
+        parsed_args, can_filters, _, _ = parse_args(["-f", "100:7FF"])
         self.assertEqual(parsed_args.filter, ["100:7FF"])
         self.assertIsInstance(can_filters, list)
         self.assertIsInstance(can_filters[0], dict)
         self.assertEqual(can_filters[0]["can_id"], 0x100)
         self.assertEqual(can_filters[0]["can_mask"], 0x7FF)
 
-        parsed_args, can_filters, _ = parse_args(["-f", "101:7FF", "102:7FC"])
+        parsed_args, can_filters, _, _ = parse_args(["-f", "101:7FF", "102:7FC"])
         self.assertEqual(parsed_args.filter, ["101:7FF", "102:7FC"])
         self.assertIsInstance(can_filters, list)
         self.assertIsInstance(can_filters[0], dict)
@@ -468,17 +489,17 @@ class CanViewerTest(unittest.TestCase):
         with self.assertRaises(argparse.ArgumentError):
             parse_args(["-f", "101,7FF"])
 
-        parsed_args, can_filters, _ = parse_args(["--filter", "100~7FF"])
+        parsed_args, can_filters, _, _ = parse_args(["--filter", "100~7FF"])
         self.assertEqual(parsed_args.filter, ["100~7FF"])
         self.assertIsInstance(can_filters, list)
         self.assertIsInstance(can_filters[0], dict)
         self.assertEqual(can_filters[0]["can_id"], 0x100 | 0x20000000)
         self.assertEqual(can_filters[0]["can_mask"], 0x7FF & 0x20000000)
 
-        parsed_args, _, _ = parse_args(["-i", "socketcan"])
+        parsed_args, _, _, _ = parse_args(["-i", "socketcan"])
         self.assertEqual(parsed_args.interface, "socketcan")
 
-        parsed_args, _, _ = parse_args(["--interface", "pcan"])
+        parsed_args, _, _, _ = parse_args(["--interface", "pcan"])
         self.assertEqual(parsed_args.interface, "pcan")
 
         # Make sure it exits with the correct error code when displaying the help page

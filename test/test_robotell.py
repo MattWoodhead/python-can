@@ -1,19 +1,22 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 import unittest
+
 import can
 
 
 class robotellTestCase(unittest.TestCase):
     def setUp(self):
         # will log timeout messages since we are not feeding ack messages to the serial port at this stage
-        self.bus = can.Bus("loop://", bustype="robotell")
+        self.bus = can.Bus("loop://", interface="robotell")
         self.serial = self.bus.serialPortOrig
         self.serial.read(self.serial.in_waiting)
 
     def tearDown(self):
         self.bus.shutdown()
+
+    def test_protocol(self):
+        self.assertEqual(self.bus.protocol, can.CanProtocol.CAN_20)
 
     def test_recv_extended(self):
         self.serial.write(
@@ -940,6 +943,10 @@ class robotellTestCase(unittest.TestCase):
                 ]
             ),
         )
+
+    def test_when_no_fileno(self):
+        with self.assertRaises(NotImplementedError):
+            self.bus.fileno()
 
 
 if __name__ == "__main__":

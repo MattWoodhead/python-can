@@ -6,13 +6,13 @@ https://www.seeedstudio.com/USB-CAN-Analyzer-p-2888.html
 SKU 114991193
 """
 
+import io
 import logging
 import struct
-import io
 from time import time
 
 import can
-from can import BusABC, Message
+from can import BusABC, CanProtocol, Message
 
 logger = logging.getLogger("seeedbus")
 
@@ -64,7 +64,7 @@ class SeeedBus(BusABC):
         operation_mode="normal",
         bitrate=500000,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         :param str channel:
@@ -100,6 +100,8 @@ class SeeedBus(BusABC):
         self.op_mode = operation_mode
         self.filter_id = bytearray([0x00, 0x00, 0x00, 0x00])
         self.mask_id = bytearray([0x00, 0x00, 0x00, 0x00])
+        self._can_protocol = CanProtocol.CAN_20
+
         if not channel:
             raise can.CanInitializationError("Must specify a serial port.")
 
@@ -113,13 +115,14 @@ class SeeedBus(BusABC):
                 "could not create the serial device"
             ) from error
 
-        super(SeeedBus, self).__init__(channel=channel, *args, **kwargs)
+        super().__init__(channel=channel, *args, **kwargs)
         self.init_frame()
 
     def shutdown(self):
         """
         Close the serial interface.
         """
+        super().shutdown()
         self.ser.close()
 
     def init_frame(self, timeout=None):

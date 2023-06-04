@@ -16,17 +16,18 @@ TODO: We could implement this interface such that setting other filters
 import ctypes
 import logging
 import sys
-
-from can import BusABC, Message
-import can.typechecking
-from ..exceptions import (
-    CanError,
-    CanInterfaceNotImplementedError,
-    CanOperationError,
-    CanInitializationError,
-)
 from typing import Optional, Tuple, Type
 
+import can.typechecking
+from can import (
+    BusABC,
+    CanError,
+    CanInitializationError,
+    CanInterfaceNotImplementedError,
+    CanOperationError,
+    CanProtocol,
+    Message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -179,10 +180,8 @@ class NicanBus(BusABC):
     .. warning::
 
         This interface does implement efficient filtering of messages, but
-        the filters have to be set in :meth:`~can.interfaces.nican.NicanBus.__init__`
-        using the ``can_filters`` parameter. Using :meth:`~can.interfaces.nican.NicanBus.set_filters`
-        does not work.
-
+        the filters have to be set in ``__init__`` using the ``can_filters`` parameter.
+        Using :meth:`~can.BusABC.set_filters` does not work.
     """
 
     def __init__(
@@ -208,9 +207,9 @@ class NicanBus(BusABC):
             ``is_error_frame`` set to True and ``arbitration_id`` will identify
             the error (default True)
 
-        :raise can.CanInterfaceNotImplementedError:
+        :raise ~can.exceptions.CanInterfaceNotImplementedError:
             If the current operating system is not supported or the driver could not be loaded.
-        :raise can.interfaces.nican.NicanInitializationError:
+        :raise ~can.interfaces.nican.NicanInitializationError:
             If the bus could not be set up.
         """
         if nican is None:
@@ -221,6 +220,7 @@ class NicanBus(BusABC):
 
         self.channel = channel
         self.channel_info = f"NI-CAN: {channel}"
+        self._can_protocol = CanProtocol.CAN_20
         channel_bytes = channel.encode("ascii")
 
         config = [(NC_ATTR_START_ON_OPEN, True), (NC_ATTR_LOG_COMM_ERRS, log_errors)]
@@ -375,4 +375,5 @@ class NicanBus(BusABC):
 
     def shutdown(self) -> None:
         """Close object."""
+        super().shutdown()
         nican.ncCloseObject(self.handle)

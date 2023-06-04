@@ -10,27 +10,9 @@ except ImportError as exc:
     ObjectProxy = object
     import_exc = exc
 
+from contextlib import nullcontext
+
 from .interface import Bus
-
-
-try:
-    from contextlib import nullcontext
-
-except ImportError:
-
-    class nullcontext:  # type: ignore
-        """A context manager that does nothing at all.
-        A fallback for Python 3.7's :class:`contextlib.nullcontext` manager.
-        """
-
-        def __init__(self, enter_result=None):
-            self.enter_result = enter_result
-
-        def __enter__(self):
-            return self.enter_result
-
-        def __exit__(self, *args):
-            pass
 
 
 class ThreadSafeBus(ObjectProxy):  # pylint: disable=abstract-method
@@ -58,9 +40,7 @@ class ThreadSafeBus(ObjectProxy):  # pylint: disable=abstract-method
 
         # now, BusABC.send_periodic() does not need a lock anymore, but the
         # implementation still requires a context manager
-        # pylint: disable=protected-access
         self.__wrapped__._lock_send_periodic = nullcontext()
-        # pylint: enable=protected-access
 
         # init locks for sending and receiving separately
         self._lock_send = RLock()
