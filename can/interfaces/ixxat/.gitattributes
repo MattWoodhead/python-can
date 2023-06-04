@@ -1,0 +1,5 @@
+canlib.py merge=ours
+__init__.py merge=ours
+constants.py merge=ours
+exceptions.py merge=ours
+structures.py merge=ours
