@@ -52,12 +52,20 @@ def main() -> None:
     )
 
     parser.add_argument(
+        "--repeat-log",
+        dest="repeat",
+        help="""When reaching end of file, return to the start and repeat indefinitely""",
+        action="store_true",
+    )
+
+    parser.add_argument(
         "-g",
         "--gap",
         type=float,
         help="<s> minimum time between replayed frames",
         default=0.0001,
     )
+
     parser.add_argument(
         "-s",
         "--skip",
@@ -82,29 +90,34 @@ def main() -> None:
     additional_config = _parse_additional_config([*results.extra_args, *unknown_args])
 
     verbosity = results.verbosity
+    repeat = results.repeat
 
     error_frames = results.error_frames
 
     with _create_bus(results, **additional_config) as bus:
-        with LogReader(results.infile, **additional_config) as reader:
-            in_sync = MessageSync(
-                cast(Iterable[Message], reader),
-                timestamps=results.timestamps,
-                gap=results.gap,
-                skip=results.skip,
-            )
+        start = True
+        while start or repeat:
+            start = False
+            with LogReader(results.infile, **additional_config) as reader:
+                in_sync = MessageSync(
+                    cast(Iterable[Message], reader),
+                    timestamps=results.timestamps,
+                    gap=results.gap,
+                    skip=results.skip,
+                )
 
-            print(f"Can LogReader (Started on {datetime.now()})")
+                print(f"Can LogReader (Started on {datetime.now()})")
 
-            try:
-                for message in in_sync:
-                    if message.is_error_frame and not error_frames:
-                        continue
-                    if verbosity >= 3:
-                        print(message)
-                    bus.send(message)
-            except KeyboardInterrupt:
-                pass
+                try:
+                    for message in in_sync:
+                        if message.is_error_frame and not error_frames:
+                            continue
+                        if verbosity >= 3:
+                            print(message)
+                        bus.send(message)
+                except KeyboardInterrupt:
+                    repeat = False
+                    pass
 
 
 if __name__ == "__main__":

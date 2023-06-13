@@ -13,11 +13,17 @@ Command line help, called with ``--help``:
 
 .. command-output:: python -m can.logger -h
 
+The logger may be stopped using a keyboard interrupt (e.g. Ctrl + C on Windows).
+
 
 can.player
 ----------
 
 .. command-output:: python -m can.player -h
+
+The log player may be stopped using a keyboard interrupt (e.g. Ctrl + C on Windows).
+
+Note: The log to be replayed must be passed using the positional argument. the ``-f LOG_FILE, --file_name LOG_FILE`` file argument has no effect.
 
 
 can.viewer
