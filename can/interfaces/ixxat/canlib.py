@@ -611,7 +611,7 @@ class IXXATBus(BusABC):
         if is_fd:
             if (
                 CanFeature.CAN_FEATURE_EXTDATA not in _features
-                or CanFeature.CAN_FEATURE_FASTDATA in _features
+                or CanFeature.CAN_FEATURE_FASTDATA not in _features
             ):
                 raise CanInitializationError(
                     "The interface %s does not support CAN FD"
