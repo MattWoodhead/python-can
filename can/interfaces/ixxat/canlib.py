@@ -627,7 +627,7 @@ class IXXATBus(BusABC):
         pBtpSDR, pBtpFDR = self._bit_timing_constructor(
             timing_obj=timing,
             bitrate=bitrate,
-            data_bitrate=data_bitrate,  # deprecated
+            data_bitrate=data_bitrate if fd else None,  # deprecated
             tseg1_abr=tseg1_abr,  # deprecated
             tseg2_abr=tseg2_abr,  # deprecated
             sjw_abr=sjw_abr,  # deprecated
