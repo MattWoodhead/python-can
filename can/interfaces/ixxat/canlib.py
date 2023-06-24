@@ -639,7 +639,7 @@ class IXXATBus(BusABC):
 
         log.info(
             "Initialising Channel %d with the following parameters:\n"
-            "bOpMode=%d, bExMode=%d"
+            "bOpMode=%d, bExMode=%d\n"
             "%s\n"
             "%s",
             channel,
