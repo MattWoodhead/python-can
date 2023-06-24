@@ -184,7 +184,7 @@ class TestHardwareCaseStd(unittest.TestCase):
     def test_bus_creation_arbitrary_bitrate(self):
         target_bitrate = 444_444
         with can.Bus(interface="ixxat", channel=0, bitrate=target_bitrate) as bus:
-            timing = bus._status().sBtpSdr
+            timing = bus._status.sBtpSdr
             bus_timing = can.BitTiming(
                 self.clock_frequency,
                 timing.dwBPS,

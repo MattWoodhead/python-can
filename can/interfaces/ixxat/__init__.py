@@ -14,7 +14,7 @@ __all__ = [
     "structures",
 ]
 
-from can.interfaces.ixxat.canlib import (  # noqa: F401
+from can.interfaces.ixxat.canlib import (
     CyclicSendTask,
     IXXATBus,
     get_ixxat_hwids,

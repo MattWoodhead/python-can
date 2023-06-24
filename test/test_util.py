@@ -2,6 +2,7 @@
 
 import unittest
 import warnings
+from typing import Optional
 
 import pytest
 
@@ -20,12 +21,14 @@ from can.util import (
 class RenameKwargsTest(unittest.TestCase):
     expected_kwargs = dict(a=1, b=2, c=3, d=4)
 
-    def _test(self, start: str, end: str, kwargs, aliases):
+    def _test(
+        self, start: str, end: Optional[str], note: Optional[str], kwargs, aliases
+    ):
         # Test that we do get the DeprecationWarning when called with deprecated kwargs
         with self.assertWarnsRegex(
             DeprecationWarning, "is deprecated.*?" + start + ".*?" + end
         ):
-            _rename_kwargs("unit_test", start, end, kwargs, aliases)
+            _rename_kwargs("unit_test", start, end, note, kwargs, aliases)
 
         # Test that the aliases contains the deprecated values and
         # the obsolete kwargs have been removed
@@ -37,30 +40,30 @@ class RenameKwargsTest(unittest.TestCase):
         # Cause all warnings to always be triggered.
         warnings.simplefilter("error", DeprecationWarning)
         try:
-            _rename_kwargs("unit_test", start, end, kwargs, aliases)
+            _rename_kwargs("unit_test", start, end, note, kwargs, aliases)
         finally:
             warnings.resetwarnings()
 
     def test_rename(self):
         kwargs = dict(old_a=1, old_b=2, c=3, d=4)
         aliases = {"old_a": "a", "old_b": "b"}
-        self._test("1.0", "2.0", kwargs, aliases)
+        self._test("1.0", "2.0", None, kwargs, aliases)
 
     def test_obsolete(self):
         kwargs = dict(a=1, b=2, c=3, d=4, z=10)
         aliases = {"z": None}
-        self._test("1.0", "2.0", kwargs, aliases)
+        self._test("1.0", "2.0", None, kwargs, aliases)
 
     def test_rename_and_obsolete(self):
         kwargs = dict(old_a=1, old_b=2, c=3, d=4, z=10)
         aliases = {"old_a": "a", "old_b": "b", "z": None}
-        self._test("1.0", "2.0", kwargs, aliases)
+        self._test("1.0", "2.0", None, kwargs, aliases)
 
     def test_with_new_and_alias_present(self):
         kwargs = dict(old_a=1, a=1, b=2, c=3, d=4, z=10)
         aliases = {"old_a": "a", "old_b": "b", "z": None}
         with self.assertRaises(TypeError):
-            self._test("1.0", "2.0", kwargs, aliases)
+            self._test("1.0", "2.0", "Random note.", kwargs, aliases)
 
 
 class DeprecatedArgsAliasTest(unittest.TestCase):
@@ -129,6 +132,20 @@ class DeprecatedArgsAliasTest(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             _test_func3(a=1)
+
+            @deprecated_args_alias(
+                "1.0.0", deprecation_info="Because why not?", old_a="a"
+            )
+            def _test_func4(a):
+                pass
+
+            with pytest.warns(DeprecationWarning) as record:
+                _test_func4(old_a=1)
+                assert len(record) == 1
+                assert (
+                    record[0].message.args[0]
+                    == "The 'old_a' argument is deprecated since python-can v1.0.0. Use 'a' instead. Because why not?"
+                )
 
 
 class TestBusConfig(unittest.TestCase):

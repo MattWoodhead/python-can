@@ -334,6 +334,7 @@ T1 = TypeVar("T1")
 def deprecated_args_alias(
     deprecation_start: str,
     deprecation_end: Optional[str] = None,
+    deprecation_info: Optional[str] = None,
     **aliases: Optional[str],
 ) -> Callable[[Callable[P1, T1]], Callable[P1, T1]]:
     """Allows to rename/deprecate a function kwarg(s) and optionally
@@ -358,6 +359,8 @@ def deprecated_args_alias(
         The *python-can* version, that introduced the :class:`DeprecationWarning`.
     :param deprecation_end:
         The *python-can* version, that marks the end of the deprecation period.
+    :param deprecation_info:
+        Additional information, which will be added to the deprecation warning..
     :param aliases:
         keyword arguments, that map the deprecated argument names
         to the new argument names or ``None``.
@@ -371,6 +374,7 @@ def deprecated_args_alias(
                 func_name=f.__name__,
                 start=deprecation_start,
                 end=deprecation_end,
+                info=deprecation_info,
                 kwargs=kwargs,
                 aliases=aliases,
             )
@@ -385,6 +389,7 @@ def _rename_kwargs(
     func_name: str,
     start: str,
     end: Optional[str],
+    info: Optional[str],
     kwargs: P1.kwargs,
     aliases: Dict[str, Optional[str]],
 ) -> None:
@@ -409,6 +414,9 @@ def _rename_kwargs(
                         f"{func_name} received both '{alias}' (deprecated) and '{new}'."
                     )
                 kwargs[new] = value
+
+            if info:
+                deprecation_notice += " " + info.strip()
 
             warnings.warn(deprecation_notice, DeprecationWarning)
 
