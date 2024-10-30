@@ -921,7 +921,7 @@ class TestTrcFileFormatBase(ReaderWriterTest):
             can.TRCWriter,
             can.TRCReader,
             check_remote_frames=False,
-            check_error_frames=False,
+            check_error_frames=True,
             check_fd=False,
             check_comments=False,
             preserves_channel=False,

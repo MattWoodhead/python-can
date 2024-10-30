@@ -157,12 +157,16 @@ class TRCReader(TextIOMessageReader):
             ).timestamp()
         else:
             msg.timestamp = float(cols[1]) / 1000
-        msg.arbitration_id = int(arbit_id, 16)
+        msg.arbitration_id = int(arbit_id, 16)  # arb ID is also error frame type
         msg.is_extended_id = len(arbit_id) > 4
         msg.channel = 1
         msg.dlc = int(cols[4])
         msg.data = bytearray([int(cols[i + 5], 16) for i in range(msg.dlc)])
-        msg.is_rx = cols[2] == "Rx"
+        if msg_type := cols[2] == "Error":
+            msg.is_error_frame = True
+            msg.is_rx = msg.data[0] == 1
+        else:
+            msg.is_rx = msg_type == "Rx"
         return msg
 
     def _parse_msg_v1_3(self, cols: List[str]) -> Optional[Message]:
@@ -180,7 +184,11 @@ class TRCReader(TextIOMessageReader):
         msg.channel = int(cols[2])
         msg.dlc = int(cols[6])
         msg.data = bytearray([int(cols[i + 7], 16) for i in range(msg.dlc)])
-        msg.is_rx = cols[3] == "Rx"
+        if msg_type := cols[3] == "Error":
+            msg.is_error_frame = True
+            msg.is_rx = msg.data[0] == 1
+        else:
+            msg.is_rx = msg_type == "Rx"
         return msg
 
     def _parse_msg_v2_x(self, cols: List[str]) -> Optional[Message]:
@@ -212,6 +220,7 @@ class TRCReader(TextIOMessageReader):
         )
         msg.is_rx = cols[self.columns["d"]] == "Rx"
         msg.is_fd = type_ in ["FD", "FB", "FE", "BI"]
+        msg.is_error_frame = type_ == "ER"
         msg.bitrate_switch = type_ in ["FB", " FE"]
         msg.error_state_indicator = type_ in ["FE", "BI"]
 
@@ -219,7 +228,7 @@ class TRCReader(TextIOMessageReader):
 
     def _parse_cols_v1_1(self, cols: List[str]) -> Optional[Message]:
         dtype = cols[2]
-        if dtype in ("Tx", "Rx"):
+        if dtype in ("Tx", "Rx", "Error"):
             return self._parse_msg_v1_1(cols)
         else:
             logger.info("TRCReader: Unsupported type '%s'", dtype)
@@ -227,7 +236,7 @@ class TRCReader(TextIOMessageReader):
 
     def _parse_cols_v1_3(self, cols: List[str]) -> Optional[Message]:
         dtype = cols[3]
-        if dtype in ("Tx", "Rx"):
+        if dtype in ("Tx", "Rx", "Error"):
             return self._parse_msg_v1_3(cols)
         else:
             logger.info("TRCReader: Unsupported type '%s'", dtype)
@@ -235,7 +244,7 @@ class TRCReader(TextIOMessageReader):
 
     def _parse_cols_v2_x(self, cols: List[str]) -> Optional[Message]:
         dtype = cols[self.columns["T"]]
-        if dtype in ["DT", "FD", "FB"]:
+        if dtype in ["DT", "FD", "FB", "ER"]:
             return self._parse_msg_v2_x(cols)
         else:
             logger.info("TRCReader: Unsupported type '%s'", dtype)
